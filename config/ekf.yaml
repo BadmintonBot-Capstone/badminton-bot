@@ -1,0 +1,40 @@
+# Extended Kalman Filter and prediction parameters.
+
+# Drag coefficient (Shen et al. default). Re-fit with tools/fit_alpha.py.
+alpha: 0.215
+
+gravity: 9.81
+
+# Process noise standard deviations.
+sigma_p: 0.05    # position (meters)
+sigma_v: 2.0     # velocity (m/s)
+
+# Measurement noise standard deviations (stereo triangulation accuracy).
+sigma_cam_x: 0.02   # meters
+sigma_cam_y: 0.02
+sigma_cam_z: 0.05   # depth axis is noisier
+
+# Number of consecutive missed detections before declaring the track lost.
+max_coast_frames: 30
+
+# Height at which the landing predictor reports the impact point (meters).
+# 0 = floor.  Set to robot striking height once known.
+target_intercept_y: 0.0
+
+# Maximum forward-simulation horizon for landing prediction (seconds).
+max_predict_time: 3.0
+
+# Initial state covariance diagonals when a new track starts.
+initial_p_position: 1.0
+initial_p_velocity: 100.0
+
+# Coordinate remap for the Shen et al. paper dataset.
+# Paper convention: X = lateral, Y = forward, Z = up, origin = court centre.
+# Our convention:   X = left,    Y = up,      Z = forward, origin = back-left corner.
+dataset_remap:
+  x_source: "X"
+  y_source: "Z"
+  z_source: "Y"
+  x_offset: 3.05    # court_width  / 2
+  y_offset: 0.0
+  z_offset: 6.7     # court_length / 2

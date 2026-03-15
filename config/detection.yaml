@@ -1,0 +1,11 @@
+# HSV birdie detection thresholds.
+# Tune these with a live trackbar tool under actual gym lighting.
+
+hsv_low:  [140, 80, 80]
+hsv_high: [179, 255, 255]
+
+# Ignore contours with fewer pixels than this.
+min_contour_area: 5
+
+# Morphological kernel size for open/close noise cleanup.
+morph_kernel_size: 7

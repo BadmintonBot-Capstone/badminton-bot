@@ -1,0 +1,8 @@
+# Large dataset - keep out of repo
+shuttlecock_trajectory_dataset/
+
+# Old code / artifacts
+old/
+
+# Build files
+build/

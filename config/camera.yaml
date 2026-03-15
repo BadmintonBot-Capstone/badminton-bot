@@ -1,0 +1,25 @@
+# Blackfly S BFS-U3-23S3C-C stereo camera configuration.
+# Applied by tools/configure_cameras.py via PySpin at startup.
+
+fps: 100
+width: 1920
+height: 1200
+
+# Exposure in microseconds. IMX392 range: 5 µs – 30 s.
+exposure_us: 5000
+
+# Gain in dB. Range: 0 – 47.
+gain_db: 0
+
+# White balance (Kelvin).
+white_balance_temperature: 4500
+white_balance_auto: false
+
+# Pixel format sent over USB.
+pixel_format: "BayerRG8"
+
+# Primary–secondary hardware trigger.
+# Primary camera drives Line2 high on each exposure.
+# Secondary camera triggers on Line3 rising edge.
+primary_serial: ""
+secondary_serial: ""
