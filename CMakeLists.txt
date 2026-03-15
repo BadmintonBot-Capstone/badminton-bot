@@ -7,7 +7,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(WITH_SPINNAKER "Build with Spinnaker SDK for camera support" OFF)
 
-find_package(OpenCV 4 REQUIRED)
+find_package(OpenCV 4 REQUIRED COMPONENTS
+    core
+    imgproc
+    calib3d
+    highgui
+)
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
