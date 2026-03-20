@@ -10,16 +10,33 @@ static CameraConfig load_camera_config(const std::string& path)
 {
     YAML::Node y = YAML::LoadFile(path);
     CameraConfig c;
+    // Acquisition.
     if (y["fps"])                        c.fps = y["fps"].as<int>();
+    if (y["exposure_us"])                c.exposure_us = y["exposure_us"].as<double>();
+    if (y["exposure_auto"])              c.exposure_auto = y["exposure_auto"].as<bool>();
+    // Sensor.
     if (y["width"])                      c.width = y["width"].as<int>();
     if (y["height"])                     c.height = y["height"].as<int>();
-    if (y["exposure_us"])                c.exposure_us = y["exposure_us"].as<double>();
-    if (y["gain_db"])                    c.gain_db = y["gain_db"].as<double>();
-    if (y["white_balance_temperature"])  c.white_balance_temperature = y["white_balance_temperature"].as<int>();
-    if (y["white_balance_auto"])         c.white_balance_auto = y["white_balance_auto"].as<bool>();
     if (y["pixel_format"])               c.pixel_format = y["pixel_format"].as<std::string>();
+    if (y["adc_bit_depth"])              c.adc_bit_depth = y["adc_bit_depth"].as<std::string>();
+    if (y["sensor_shutter_mode"])        c.sensor_shutter_mode = y["sensor_shutter_mode"].as<std::string>();
+    // Analog.
+    if (y["gain_db"])                    c.gain_db = y["gain_db"].as<double>();
+    if (y["gain_auto"])                  c.gain_auto = y["gain_auto"].as<bool>();
+    if (y["black_level"])                c.black_level = y["black_level"].as<double>();
+    if (y["gamma_enable"])               c.gamma_enable = y["gamma_enable"].as<bool>();
+    // White balance.
+    if (y["white_balance_auto"])         c.white_balance_auto = y["white_balance_auto"].as<bool>();
+    if (y["balance_ratio_red"])          c.balance_ratio_red = y["balance_ratio_red"].as<double>();
+    if (y["balance_ratio_blue"])         c.balance_ratio_blue = y["balance_ratio_blue"].as<double>();
+    // Chunk data.
+    if (y["chunk_mode_active"])          c.chunk_mode_active = y["chunk_mode_active"].as<bool>();
+    if (y["chunk_timestamp"])            c.chunk_timestamp = y["chunk_timestamp"].as<bool>();
+    // Hardware trigger.
     if (y["primary_serial"])             c.primary_serial = y["primary_serial"].as<std::string>();
     if (y["secondary_serial"])           c.secondary_serial = y["secondary_serial"].as<std::string>();
+    // USB transport.
+    if (y["device_link_throughput_limit"]) c.device_link_throughput_limit = y["device_link_throughput_limit"].as<int>();
     return c;
 }
 
