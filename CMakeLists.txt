@@ -45,7 +45,7 @@ if(WITH_SPINNAKER)
     set(SPINNAKER_DIR "/opt/spinnaker" CACHE PATH "Spinnaker SDK install prefix")
 
     find_library(SPINNAKER_LIB Spinnaker HINTS ${SPINNAKER_DIR}/lib)
-    find_path(SPINNAKER_INCLUDE Spinnaker.h HINTS ${SPINNAKER_DIR}/include/spinnaker)
+    find_path(SPINNAKER_INCLUDE Spinnaker.h HINTS ${SPINNAKER_DIR}/include/spinnaker ${SPINNAKER_DIR}/include)
 
     if(NOT SPINNAKER_LIB OR NOT SPINNAKER_INCLUDE)
         message(FATAL_ERROR "Spinnaker SDK not found. Set SPINNAKER_DIR or disable WITH_SPINNAKER.")
@@ -60,4 +60,12 @@ if(WITH_SPINNAKER)
 
     add_executable(realtime src/realtime.cpp)
     target_link_libraries(realtime PRIVATE baddy_camera)
+
+    add_executable(preview src/preview.cpp)
+    target_include_directories(preview PRIVATE ${SPINNAKER_INCLUDE})
+    target_link_libraries(preview PRIVATE baddy_core ${SPINNAKER_LIB})
+
+    add_executable(dump_nodes src/dump_nodes.cpp)
+    target_include_directories(dump_nodes PRIVATE ${SPINNAKER_INCLUDE})
+    target_link_libraries(dump_nodes PRIVATE ${SPINNAKER_LIB})
 endif()

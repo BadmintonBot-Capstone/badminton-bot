@@ -33,40 +33,87 @@ struct StereoCamera::Impl {
     Spinnaker::SystemPtr system;
     Spinnaker::CameraPtr primary;
     Spinnaker::CameraPtr secondary;
+    Spinnaker::ImageProcessor processor;
     CameraConfig cfg;
 };
 
+static void set_enum(Spinnaker::GenApi::INodeMap& nm, const char* name, const char* value)
+{
+    Spinnaker::GenApi::CEnumerationPtr node = nm.GetNode(name);
+    if (node && Spinnaker::GenApi::IsWritable(node))
+        node->SetIntValue(node->GetEntryByName(value)->GetValue());
+}
+
+static void set_float(Spinnaker::GenApi::INodeMap& nm, const char* name, double value)
+{
+    Spinnaker::GenApi::CFloatPtr node = nm.GetNode(name);
+    if (node && Spinnaker::GenApi::IsWritable(node))
+        node->SetValue(value);
+}
+
+static void set_bool(Spinnaker::GenApi::INodeMap& nm, const char* name, bool value)
+{
+    Spinnaker::GenApi::CBooleanPtr node = nm.GetNode(name);
+    if (node && Spinnaker::GenApi::IsWritable(node))
+        node->SetValue(value);
+}
+
+static void set_int(Spinnaker::GenApi::INodeMap& nm, const char* name, int64_t value)
+{
+    Spinnaker::GenApi::CIntegerPtr node = nm.GetNode(name);
+    if (node && Spinnaker::GenApi::IsWritable(node))
+        node->SetValue(value);
+}
+
 static void configure_common(Spinnaker::CameraPtr cam, const CameraConfig& cfg)
 {
-    auto& nodemap = cam->GetNodeMap();
+    auto& nm = cam->GetNodeMap();
 
     // Exposure.
-    Spinnaker::GenApi::CEnumerationPtr exposure_auto = nodemap.GetNode("ExposureAuto");
-    if (exposure_auto) exposure_auto->SetIntValue(exposure_auto->GetEntryByName("Off")->GetValue());
-
-    Spinnaker::GenApi::CFloatPtr exposure_time = nodemap.GetNode("ExposureTime");
-    if (exposure_time) exposure_time->SetValue(cfg.exposure_us);
+    set_enum(nm, "ExposureAuto", cfg.exposure_auto ? "Continuous" : "Off");
+    if (!cfg.exposure_auto)
+        set_float(nm, "ExposureTime", cfg.exposure_us);
 
     // Gain.
-    Spinnaker::GenApi::CEnumerationPtr gain_auto = nodemap.GetNode("GainAuto");
-    if (gain_auto) gain_auto->SetIntValue(gain_auto->GetEntryByName("Off")->GetValue());
+    set_enum(nm, "GainAuto", cfg.gain_auto ? "Continuous" : "Off");
+    if (!cfg.gain_auto)
+        set_float(nm, "Gain", cfg.gain_db);
 
-    Spinnaker::GenApi::CFloatPtr gain = nodemap.GetNode("Gain");
-    if (gain) gain->SetValue(cfg.gain_db);
+    // Black level.
+    set_float(nm, "BlackLevel", cfg.black_level);
+
+    // Gamma.
+    set_bool(nm, "GammaEnable", cfg.gamma_enable);
 
     // White balance.
-    Spinnaker::GenApi::CEnumerationPtr wb_auto = nodemap.GetNode("BalanceWhiteAuto");
-    if (wb_auto) {
-        const char* mode = cfg.white_balance_auto ? "Continuous" : "Off";
-        wb_auto->SetIntValue(wb_auto->GetEntryByName(mode)->GetValue());
+    set_enum(nm, "BalanceWhiteAuto", cfg.white_balance_auto ? "Continuous" : "Off");
+    if (!cfg.white_balance_auto) {
+        set_enum(nm, "BalanceRatioSelector", "Red");
+        set_float(nm, "BalanceRatio", cfg.balance_ratio_red);
+        set_enum(nm, "BalanceRatioSelector", "Blue");
+        set_float(nm, "BalanceRatio", cfg.balance_ratio_blue);
     }
 
-    // Frame rate.
-    Spinnaker::GenApi::CBooleanPtr fr_enable = nodemap.GetNode("AcquisitionFrameRateEnable");
-    if (fr_enable) fr_enable->SetValue(true);
+    // Sensor.
+    set_enum(nm, "AdcBitDepth", cfg.adc_bit_depth.c_str());
+    set_enum(nm, "SensorShutterMode", cfg.sensor_shutter_mode.c_str());
 
-    Spinnaker::GenApi::CFloatPtr fr = nodemap.GetNode("AcquisitionFrameRate");
-    if (fr) fr->SetValue(static_cast<double>(cfg.fps));
+    // Frame rate.
+    set_bool(nm, "AcquisitionFrameRateEnable", true);
+    set_float(nm, "AcquisitionFrameRate", static_cast<double>(cfg.fps));
+
+    // USB transport.
+    set_int(nm, "DeviceLinkThroughputLimit", cfg.device_link_throughput_limit);
+
+    // Chunk data — must be configured before acquisition starts.
+    if (cfg.chunk_mode_active) {
+        set_bool(nm, "ChunkModeActive", false);  // Disable first to allow selector changes.
+        if (cfg.chunk_timestamp) {
+            set_enum(nm, "ChunkSelector", "Timestamp");
+            set_bool(nm, "ChunkEnable", true);
+        }
+        set_bool(nm, "ChunkModeActive", true);
+    }
 }
 
 static void configure_primary(Spinnaker::CameraPtr cam, const CameraConfig& cfg)
@@ -155,14 +202,20 @@ bool StereoCamera::grab(cv::Mat& left, cv::Mat& right, int64_t& timestamp_ns)
             return false;
         }
 
-        timestamp_ns = static_cast<int64_t>(img_primary->GetTimeStamp());
+        // Prefer chunk timestamp (hardware exposure time) over host-side GetTimeStamp().
+        if (impl_->cfg.chunk_mode_active && impl_->cfg.chunk_timestamp) {
+            auto chunk = img_primary->GetChunkData();
+            timestamp_ns = static_cast<int64_t>(chunk.GetTimestamp());
+        } else {
+            timestamp_ns = static_cast<int64_t>(img_primary->GetTimeStamp());
+        }
 
         const int w = static_cast<int>(img_primary->GetWidth());
         const int h = static_cast<int>(img_primary->GetHeight());
 
         // Convert Bayer to BGR.
-        auto converted_p = img_primary->Convert(Spinnaker::PixelFormat_BGR8);
-        auto converted_s = img_secondary->Convert(Spinnaker::PixelFormat_BGR8);
+        auto converted_p = impl_->processor.Convert(img_primary, Spinnaker::PixelFormat_BGR8);
+        auto converted_s = impl_->processor.Convert(img_secondary, Spinnaker::PixelFormat_BGR8);
 
         left  = cv::Mat(h, w, CV_8UC3, converted_p->GetData()).clone();
         right = cv::Mat(h, w, CV_8UC3, converted_s->GetData()).clone();

@@ -9,7 +9,7 @@ Stereo vision pipeline for a fully autonomous badminton-playing robot. Two synch
 ## Directory structure
 
 ```
-vision/
+badminton-bot/
 ├── CMakeLists.txt
 ├── config/
 │   ├── camera.yaml          # Camera hardware settings

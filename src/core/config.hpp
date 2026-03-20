@@ -8,16 +8,39 @@ namespace baddy {
 
 // ── Camera configuration ──────────────────────────────────────────
 struct CameraConfig {
+    // Acquisition.
     int    fps                      = 100;
+    double exposure_us              = 5000;
+    bool   exposure_auto            = false;
+
+    // Sensor.
     int    width                    = 1920;
     int    height                   = 1200;
-    double exposure_us              = 5000;
-    double gain_db                  = 0;
-    int    white_balance_temperature = 4500;
-    bool   white_balance_auto       = false;
     std::string pixel_format        = "BayerRG8";
+    std::string adc_bit_depth       = "Bit10";
+    std::string sensor_shutter_mode = "Global";
+
+    // Analog.
+    double gain_db                  = 0;
+    bool   gain_auto                = false;
+    double black_level              = 0.0;
+    bool   gamma_enable             = false;
+
+    // White balance.
+    bool   white_balance_auto       = false;
+    double balance_ratio_red        = 1.28;
+    double balance_ratio_blue       = 1.28;
+
+    // Chunk data.
+    bool   chunk_mode_active        = true;
+    bool   chunk_timestamp          = true;
+
+    // Hardware trigger serials.
     std::string primary_serial;
     std::string secondary_serial;
+
+    // USB transport.
+    int    device_link_throughput_limit = 380000000;
 };
 
 // ── Detection configuration ───────────────────────────────────────
