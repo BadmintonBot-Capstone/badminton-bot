@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.16)
 project(baddy_vision CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -15,6 +15,9 @@ find_package(OpenCV 4 REQUIRED COMPONENTS
 )
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
+if(NOT TARGET yaml-cpp::yaml-cpp)
+    add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
+endif()
 
 set(CORE_SOURCES
     src/core/config.cpp
