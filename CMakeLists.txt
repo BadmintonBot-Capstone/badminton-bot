@@ -15,8 +15,10 @@ find_package(OpenCV 4 REQUIRED COMPONENTS
 )
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
-if(NOT TARGET yaml-cpp::yaml-cpp)
-    add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
+if(TARGET yaml-cpp::yaml-cpp)
+    set(YAML_CPP_TARGET yaml-cpp::yaml-cpp)
+else()
+    set(YAML_CPP_TARGET yaml-cpp)
 endif()
 
 set(CORE_SOURCES
@@ -35,7 +37,7 @@ target_include_directories(baddy_core PUBLIC src)
 target_link_libraries(baddy_core PUBLIC
     ${OpenCV_LIBS}
     Eigen3::Eigen
-    yaml-cpp::yaml-cpp
+    ${YAML_CPP_TARGET}
 )
 
 # replay_trajectory — works without cameras
