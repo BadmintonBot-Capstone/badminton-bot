@@ -31,8 +31,8 @@ chunk_timestamp: true       # Microsecond-precision exposure timestamp.
 # ── Primary–secondary hardware trigger ───────────────────────────
 # Primary camera drives Line2 high on each exposure (V3_3Enable).
 # Secondary camera triggers on Line3 rising edge.
-primary_serial: ""
-secondary_serial: ""
+primary_serial: "25376120"
+secondary_serial: "25376121"
 
 # ── USB transport ────────────────────────────────────────────────
 device_link_throughput_limit: 380000000   # Lower to ~250M if both share one USB controller.

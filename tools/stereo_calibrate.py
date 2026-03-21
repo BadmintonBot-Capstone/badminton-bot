@@ -16,11 +16,11 @@ import sys
 import os
 
 # ── ChArUco board parameters (must match generate_board.py) ──────
-SQUARES_X = 9
-SQUARES_Y = 6
-SQUARE_LENGTH = 0.030   # 30 mm
-MARKER_LENGTH = 0.023   # 23 mm
-ARUCO_DICT = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100)
+SQUARES_X = 5
+SQUARES_Y = 7
+SQUARE_LENGTH = 0.032   # change this if you changed ur board
+MARKER_LENGTH = 0.0236   # black to black
+ARUCO_DICT = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 BOARD = cv2.aruco.CharucoBoard(
     (SQUARES_X, SQUARES_Y), SQUARE_LENGTH, MARKER_LENGTH, ARUCO_DICT
 )
