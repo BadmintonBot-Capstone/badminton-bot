@@ -66,6 +66,12 @@ if(WITH_SPINNAKER)
     add_executable(realtime src/realtime.cpp)
     target_link_libraries(realtime PRIVATE baddy_camera)
 
+    add_executable(capture_calibration src/capture_calibration.cpp)
+    target_link_libraries(capture_calibration PRIVATE baddy_camera)
+
+    add_executable(depth_verify src/depth_verify.cpp)
+    target_link_libraries(depth_verify PRIVATE baddy_camera)
+
     add_executable(preview src/preview.cpp)
     target_include_directories(preview PRIVATE ${SPINNAKER_INCLUDE})
     target_link_libraries(preview PRIVATE baddy_core ${SPINNAKER_LIB})
