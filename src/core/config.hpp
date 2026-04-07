@@ -45,10 +45,10 @@ struct CameraConfig {
 
 // ── Detection configuration ───────────────────────────────────────
 struct DetectionConfig {
-    int hsv_low[3]        = {140, 80, 80};
-    int hsv_high[3]       = {179, 255, 255};
-    int min_contour_area  = 5;
-    int morph_kernel_size = 7;
+    int hsv_low[3]        = {13, 209, 7};
+    int hsv_high[3]       = {15, 226, 255};
+    int min_contour_area  = 2;
+    int morph_kernel_size = 1;
 };
 
 // ── EKF / prediction configuration ───────────────────────────────
