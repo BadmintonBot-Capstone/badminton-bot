@@ -76,6 +76,13 @@ if(WITH_SPINNAKER)
     target_include_directories(preview PRIVATE ${SPINNAKER_INCLUDE})
     target_link_libraries(preview PRIVATE baddy_core ${SPINNAKER_LIB})
 
+    add_executable(diff_detect src/diff_detect.cpp)
+    target_link_libraries(diff_detect PRIVATE baddy_camera)
+
+    add_executable(diff_detect_single src/diff_detect_single.cpp)
+    target_include_directories(diff_detect_single PRIVATE ${SPINNAKER_INCLUDE})
+    target_link_libraries(diff_detect_single PRIVATE baddy_core ${SPINNAKER_LIB})
+
     add_executable(dump_nodes src/dump_nodes.cpp)
     target_include_directories(dump_nodes PRIVATE ${SPINNAKER_INCLUDE})
     target_link_libraries(dump_nodes PRIVATE ${SPINNAKER_LIB})
