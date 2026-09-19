@@ -47,9 +47,15 @@ target_link_libraries(replay_trajectory PRIVATE baddy_core)
 if(WITH_SPINNAKER)
     # Spinnaker SDK does not ship a CMake find module.
     # Set SPINNAKER_DIR to the SDK install prefix if it is not in a standard location.
-    set(SPINNAKER_DIR "/opt/spinnaker" CACHE PATH "Spinnaker SDK install prefix")
+    # windows installs spinnaker 4.x under program files and names the library after the msvc toolset.
+    if(WIN32)
+        set(SPINNAKER_DIR "C:/Program Files/Teledyne/Spinnaker" CACHE PATH "Spinnaker SDK install prefix")
+    else()
+        set(SPINNAKER_DIR "/opt/spinnaker" CACHE PATH "Spinnaker SDK install prefix")
+    endif()
 
-    find_library(SPINNAKER_LIB Spinnaker HINTS ${SPINNAKER_DIR}/lib)
+    find_library(SPINNAKER_LIB NAMES Spinnaker Spinnaker_v140
+        HINTS ${SPINNAKER_DIR}/lib ${SPINNAKER_DIR}/lib64/vs2015)
     find_path(SPINNAKER_INCLUDE Spinnaker.h HINTS ${SPINNAKER_DIR}/include/spinnaker ${SPINNAKER_DIR}/include)
 
     if(NOT SPINNAKER_LIB OR NOT SPINNAKER_INCLUDE)
