@@ -3,7 +3,9 @@
 // This file is only compiled when WITH_SPINNAKER is ON.
 // The actual Spinnaker SDK must be installed.
 
+#include <memory>
 #include "core/camera.hpp"
+#include "core/stereo_recorder.h"
 
 #ifdef __has_include
 # if __has_include(<Spinnaker.h>)
@@ -35,6 +37,7 @@ struct StereoCamera::Impl {
     Spinnaker::CameraPtr secondary;
     Spinnaker::ImageProcessor processor;
     CameraConfig cfg;
+    std::unique_ptr<StereoRecorder> recorder;
 };
 
 static void set_enum(Spinnaker::GenApi::INodeMap& nm, const char* name, const char* value)
@@ -202,13 +205,28 @@ bool StereoCamera::grab(cv::Mat& left, cv::Mat& right, int64_t& timestamp_ns)
             return false;
         }
 
-        // Prefer chunk timestamp (hardware exposure time) over host-side GetTimeStamp().
+        int64_t ts_secondary;
         if (impl_->cfg.chunk_mode_active && impl_->cfg.chunk_timestamp) {
-            auto chunk = img_primary->GetChunkData();
-            timestamp_ns = static_cast<int64_t>(chunk.GetTimestamp());
+            timestamp_ns = static_cast<int64_t>(img_primary->GetChunkData().GetTimestamp());
+            ts_secondary = static_cast<int64_t>(img_secondary->GetChunkData().GetTimestamp());
         } else {
             timestamp_ns = static_cast<int64_t>(img_primary->GetTimeStamp());
+            ts_secondary = static_cast<int64_t>(img_secondary->GetTimeStamp());
         }
+
+        if (impl_->recorder)
+            impl_->recorder->push(img_primary, img_secondary, timestamp_ns, ts_secondary);
+
+        // Prefer chunk timestamp (hardware exposure time) over host-side GetTimeStamp().
+        // if (impl_->cfg.chunk_mode_active && impl_->cfg.chunk_timestamp) {
+        //     auto chunk = img_primary->GetChunkData();
+        //     timestamp_ns = static_cast<int64_t>(chunk.GetTimestamp());
+        // } else {
+        //     timestamp_ns = static_cast<int64_t>(img_primary->GetTimeStamp());
+        // }
+
+        // if (impl_->recorder)
+        //     impl_->recorder->push(img_primary, img_secondary, timestamp_ns, timestamp_ns);
 
         const int w = static_cast<int>(img_primary->GetWidth());
         const int h = static_cast<int>(img_primary->GetHeight());
@@ -244,6 +262,14 @@ void StereoCamera::stop()
         impl_->system->ReleaseInstance();
         impl_->system = nullptr;
     }
+}
+
+void StereoCamera::start_recording(const std::string& dir) {
+    impl_->recorder = std::make_unique<StereoRecorder>(dir);
+}
+
+void StereoCamera::stop_recording() {
+    impl_->recorder.reset();  // flushes remaining frames and closes the files
 }
 
 } // namespace baddy

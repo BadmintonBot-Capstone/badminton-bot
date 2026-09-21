@@ -31,6 +31,10 @@ public:
     // End acquisition and release resources.
     void stop();
 
+    void start_recording(const std::string& dir);
+
+    void stop_recording();
+
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;

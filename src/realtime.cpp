@@ -44,6 +44,7 @@ int main(int argc, char** argv)
     cv::Mat left, right, rect_l, rect_r;
     int64_t ts_ns = 0;
     int frame_id = 0;
+    camera.start_recording("C:/Users/justi/479_recording_run1");
 
     while (true) {
         baddy::FrameTiming ft;
@@ -140,6 +141,8 @@ int main(int argc, char** argv)
 
         ++frame_id;
     }
+
+    camera.stop_recording();
 
     camera.stop();
     cv::destroyAllWindows();
