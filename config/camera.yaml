@@ -3,7 +3,7 @@
 
 # ── Acquisition ──────────────────────────────────────────────────
 fps: 50
-exposure_us: 500            # IMX392 range: 6 µs – 30 s. Short = less motion blur.
+exposure_us: 3000            # IMX392 range: 6 µs – 30 s. Short = less motion blur.
 exposure_auto: false
 
 # ── Sensor ───────────────────────────────────────────────────────
@@ -14,7 +14,7 @@ adc_bit_depth: "Bit10"     # {Bit10, Bit12}. Bit10 is faster.
 sensor_shutter_mode: "Global"
 
 # ── Analog ───────────────────────────────────────────────────────
-gain_db: 0                 # Range: 0 – 47.99 dB. 0 = minimum noise.
+gain_db: 12                # Range: 0 – 47.99 dB. 0 = minimum noise.
 gain_auto: false
 black_level: 0.0           # Range: -5 .. 10
 gamma_enable: false         # Disable for linear response (better for CV).
