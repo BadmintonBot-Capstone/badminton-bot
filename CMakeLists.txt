@@ -89,6 +89,14 @@ if(WITH_SPINNAKER)
     target_include_directories(diff_detect_single PRIVATE ${SPINNAKER_INCLUDE})
     target_link_libraries(diff_detect_single PRIVATE baddy_core ${SPINNAKER_LIB})
 
+    add_executable(record_single src/record_single.cpp)
+    target_include_directories(record_single PRIVATE ${SPINNAKER_INCLUDE})
+    target_link_libraries(record_single PRIVATE baddy_core ${SPINNAKER_LIB})
+
+    add_executable(track_single src/track_single.cpp)
+    target_include_directories(track_single PRIVATE ${SPINNAKER_INCLUDE})
+    target_link_libraries(track_single PRIVATE baddy_core ${SPINNAKER_LIB})
+
     add_executable(dump_nodes src/dump_nodes.cpp)
     target_include_directories(dump_nodes PRIVATE ${SPINNAKER_INCLUDE})
     target_link_libraries(dump_nodes PRIVATE ${SPINNAKER_LIB})
