@@ -1,0 +1,11 @@
+# Motion tracker settings for track_single, tuned on the Project Lab recordings (2026-09-30).
+# Anything left out keeps the default in src/shuttle_tracker.hpp.
+
+# Yellow nylon shuttle: drop motion blobs whose colour is not yellow enough.
+# The value depends on white balance and lighting, so re-measure it at a new venue
+# (recordings/analysis/colour.py).
+min_yellow: 0.3
+yellow_strict: true
+
+# Blob grouping for people was tried and adds nothing once the colour check is on (0 = off).
+merge: 0
