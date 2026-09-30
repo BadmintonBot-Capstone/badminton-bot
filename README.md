@@ -188,6 +188,13 @@ calibrate_court.py     → compute camera-to-court transform
 fit_alpha.py           → (optional) re-fit drag coefficient to local data
 ```
 
+The board is described once, in `config/board.yaml` (grid, marker dictionary, square and marker size), and both Python scripts read it. Run them from `vision/` with a Python that has OpenCV 4.7 or newer, PyYAML and Pillow.
+
+1. `python tools/generate_board.py tabloid` writes `charuco_tabloid.pdf` at exact scale (also `letter`, `a4`, `a3` or `WIDTHxHEIGHT` in mm). Print it at 100% (actual size) and check the 100 mm line.
+2. Mount it flat on something rigid, measure one square and one marker (black edge to black edge), and put those lengths in `config/board.yaml`.
+3. Capture pairs into a new folder and copy `config/board.yaml` into it, so the folder always records which board it was taken with.
+4. `python tools/stereo_calibrate.py <folder> config/calibration.yaml` uses `<folder>/board.yaml` when it exists, otherwise `config/board.yaml`.
+
 ---
 
 ## Not in the repo

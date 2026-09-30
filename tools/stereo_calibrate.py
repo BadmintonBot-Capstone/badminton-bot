@@ -2,11 +2,12 @@
 """Stereo calibration from ChArUco image pairs.
 
 Usage:
-    python stereo_calibrate.py [image_dir] [output_yaml]
+    python tools/stereo_calibrate.py [image_dir] [output_yaml] [board_yaml]
 
 Defaults:
     image_dir  = data/calibration_images
     output     = config/calibration.yaml
+    board_yaml = image_dir/board.yaml if it exists, otherwise config/board.yaml
 """
 
 import cv2
@@ -15,32 +16,31 @@ import glob
 import sys
 import os
 
-# ── ChArUco board parameters (must match generate_board.py) ──────
-SQUARES_X = 5
-SQUARES_Y = 7
-SQUARE_LENGTH = 0.032   # change this if you changed ur board
-MARKER_LENGTH = 0.0236   # black to black
-ARUCO_DICT = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-BOARD = cv2.aruco.CharucoBoard(
-    (SQUARES_X, SQUARES_Y), SQUARE_LENGTH, MARKER_LENGTH, ARUCO_DICT
-)
+from board import load_board
+
+BOARD = None
+DETECTOR = None
 
 
 def detect_charuco(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
-    detector = cv2.aruco.ArucoDetector(ARUCO_DICT)
-    corners, ids, _ = detector.detectMarkers(gray)
-    if ids is None or len(ids) < 4:
+    charuco_corners, charuco_ids, _, marker_ids = DETECTOR.detectBoard(gray)
+    if marker_ids is None or len(marker_ids) < 4 or charuco_ids is None:
         return None, None
-    _, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(
-        corners, ids, gray, BOARD
-    )
     return charuco_corners, charuco_ids
 
 
 def main():
+    global BOARD, DETECTOR
     image_dir = sys.argv[1] if len(sys.argv) > 1 else "data/calibration_images"
     output_path = sys.argv[2] if len(sys.argv) > 2 else "config/calibration.yaml"
+    board_path = sys.argv[3] if len(sys.argv) > 3 else os.path.join(image_dir, "board.yaml")
+    if not os.path.exists(board_path):
+        board_path = "config/board.yaml"
+    BOARD, _, s = load_board(board_path)
+    DETECTOR = cv2.aruco.CharucoDetector(BOARD)
+    print(f"Board from {board_path}: {s['squares_x']} x {s['squares_y']}, "
+          f"squares {s['square_mm']} mm, markers {s['marker_mm']} mm, {s['dictionary']}")
 
     left_paths = sorted(glob.glob(os.path.join(image_dir, "left_*.png")))
     right_paths = sorted(glob.glob(os.path.join(image_dir, "right_*.png")))

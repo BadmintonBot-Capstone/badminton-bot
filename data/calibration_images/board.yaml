@@ -1,0 +1,7 @@
+# The letter-size board these pairs were captured with (the values stereo_calibrate.py had before config/board.yaml).
+
+squares_x: 5
+squares_y: 7
+dictionary: DICT_4X4_50
+square_mm: 32.0
+marker_mm: 23.6
