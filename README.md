@@ -139,9 +139,13 @@ The Windows build has not been tested on real hardware yet. If Windows reports a
 | `dump_nodes` | yes | Prints every configurable Spinnaker node on the connected cameras. |
 | `focus` | yes | Live view of every camera with a zoomed crop and a sharpness score, for setting the lens focus. Click to move the zoom box, `+`/`-` zoom, `r` resets the peak. |
 | `capture_calibration` | yes | Saves synchronized stereo pairs for calibration, with the board from `config/board.yaml` detected live in both views. Space starts a countdown loop (a shot every 3 s), `s` saves a pair now, `f` fullscreen, `q` quits. A pair is only saved when both cameras see at least 6 of the same corners. |
+| `record_stereo` | yes | Records raw Bayer pairs from both cameras on the trigger into RAM, then writes `left.raw`, `right.raw`, `frames.csv` and `meta.yaml` (settings as applied, git commit, `--note key=value` pairs). A live view and big countdown make it usable alone. Run it under `systemd-inhibit --what=sleep:idle:handle-lid-switch` so the laptop cannot sleep mid-clip. |
+| `track_single` | yes | Single-camera motion tracker, live or `--replay <clip> --camera left\|right`, writes per-frame reports with `--out`. |
 | `depth_verify` | yes | Live HSV tuning and stereo depth check: masks, epipolar lines, triangulated XYZ. |
 | `realtime` | yes | Full pipeline: detect, triangulate, track, predict landing. Add `--headless` to skip the window. |
 | `capture_trajectories` | yes | Records trajectories to CSV in the folder given by `--output`. |
+
+Experiments (question, protocol, results, answer) are written up in `experiments/`, and the Python that scores clips is in `analysis/`.
 
 Most take `--config config/`, and the ones that triangulate also take `--calibration config/calibration.yaml`. `preview` takes the config folder as a plain argument, `dump_nodes` takes nothing, and `replay_trajectory` takes `--trajectory <csv>`.
 

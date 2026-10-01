@@ -76,6 +76,9 @@ if(WITH_SPINNAKER)
     add_executable(capture_calibration src/capture_calibration.cpp)
     target_link_libraries(capture_calibration PRIVATE baddy_camera)
 
+    add_executable(record_stereo src/record_stereo.cpp)
+    target_link_libraries(record_stereo PRIVATE baddy_camera)
+
     add_executable(depth_verify src/depth_verify.cpp)
     target_link_libraries(depth_verify PRIVATE baddy_camera)
 

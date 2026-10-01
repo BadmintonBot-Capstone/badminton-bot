@@ -6,3 +6,6 @@ old/
 
 # Build files
 build/
+
+# Python caches
+__pycache__/

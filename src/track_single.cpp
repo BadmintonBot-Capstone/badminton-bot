@@ -2,7 +2,7 @@
 //
 // usage:
 //   ./track_single [--config config/] [--exposure us] [--gain db] [--fps n] [--headless]
-//   ./track_single --replay <recording dir> [--out track.csv] [--headless]
+//   ./track_single --replay <recording dir> [--camera left|right] [--out track.csv] [--headless]
 //
 // keys: q quit, h display on/off
 
@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <vector>
@@ -41,19 +42,21 @@ struct Stats {
     }
 };
 
-// plays back record_single output one frame at a time
+// plays back one camera of a record_stereo clip (left.raw, right.raw) or a record_single clip (frames.raw)
 struct Replay {
     std::ifstream raw;
     int w = 0, h = 0, n = 0, i = 0;
     cv::Mat frame;
 
-    explicit Replay(const std::string& dir)
+    Replay(const std::string& dir, const std::string& camera)
     {
         YAML::Node m = YAML::LoadFile(dir + "/meta.yaml");
         w = m["width"].as<int>();
         h = m["height"].as<int>();
         n = m["frames"].as<int>();
-        raw.open(dir + "/frames.raw", std::ios::binary);
+        std::string path = dir + "/" + camera + ".raw";
+        if (!std::filesystem::exists(path)) path = dir + "/frames.raw";
+        raw.open(path, std::ios::binary);
         frame.create(h, w, CV_8UC1);
     }
     bool next()
@@ -84,7 +87,7 @@ static void draw(cv::Mat& disp, const shuttle::Detector& det, const std::vector<
 
 int main(int argc, char** argv)
 {
-    std::string config_dir = "config", replay_dir, out_csv;
+    std::string config_dir = "config", replay_dir, out_csv, replay_cam = "left";
     double exposure = -1, gain = -1;
     int fps = -1;
     bool show = true;
@@ -93,6 +96,7 @@ int main(int argc, char** argv)
         auto is = [&](const char* flag) { return !std::strcmp(argv[i], flag) && i + 1 < argc; };
         if      (is("--config"))   config_dir = argv[++i];
         else if (is("--replay"))   replay_dir = argv[++i];
+        else if (is("--camera"))   replay_cam = argv[++i];
         else if (is("--out"))      out_csv    = argv[++i];
         else if (is("--exposure")) exposure   = std::atof(argv[++i]);
         else if (is("--gain"))     gain       = std::atof(argv[++i]);
@@ -108,7 +112,7 @@ int main(int argc, char** argv)
     Spinnaker::CameraPtr cam;
     int w = 0, h = 0;
     if (!replay_dir.empty()) {
-        replay = std::make_unique<Replay>(replay_dir);
+        replay = std::make_unique<Replay>(replay_dir, replay_cam);
         w = replay->w;
         h = replay->h;
         std::printf("[track] replaying %d frames from %s\n", replay->n, replay_dir.c_str());
@@ -142,7 +146,7 @@ int main(int argc, char** argv)
     std::ofstream csv;
     if (!out_csv.empty()) {
         csv.open(out_csv);
-        csv << "frame,state,x,y\n";
+        csv << "frame,state,x,y,detect_ms\n";
     }
     if (show) cv::namedWindow("track_single", cv::WINDOW_NORMAL);
 
@@ -195,7 +199,7 @@ int main(int argc, char** argv)
             csv << frame << ',' << st << ',';
             if (out.track) csv << 2 * out.p.x << ',' << 2 * out.p.y;
             else           csv << ',';
-            csv << '\n';
+            csv << ',' << det_us / 1000 << '\n';
         }
 
         int key = -1;

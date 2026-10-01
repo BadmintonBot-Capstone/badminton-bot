@@ -20,11 +20,15 @@ StereoCamera::StereoCamera(const CameraConfig&) : impl_(std::make_unique<Impl>()
 StereoCamera::~StereoCamera() = default;
 void StereoCamera::start() {}
 bool StereoCamera::grab(cv::Mat&, cv::Mat&, int64_t&) { return false; }
+bool StereoCamera::grab_raw(RawPair&) { return false; }
+void StereoCamera::deep_buffers(int) {}
+StereoCamera::Applied StereoCamera::applied(bool) const { return {}; }
 void StereoCamera::stop() {}
 } // namespace baddy
 
 #else // HAS_SPINNAKER — real implementation
 
+#include <algorithm>
 #include <cstdio>
 
 namespace baddy {
@@ -95,6 +99,8 @@ static void configure_common(Spinnaker::CameraPtr cam, const CameraConfig& cfg)
     }
 
     // Sensor.
+    if (!cfg.pixel_format.empty())
+        set_enum(nm, "PixelFormat", cfg.pixel_format.c_str());
     set_enum(nm, "AdcBitDepth", cfg.adc_bit_depth.c_str());
     set_enum(nm, "SensorShutterMode", cfg.sensor_shutter_mode.c_str());
 
@@ -228,6 +234,78 @@ bool StereoCamera::grab(cv::Mat& left, cv::Mat& right, int64_t& timestamp_ns)
         std::fprintf(stderr, "[camera] grab error: %s\n", e.what());
         return false;
     }
+}
+
+bool StereoCamera::grab_raw(RawPair& pair)
+{
+    try {
+        auto img_p = impl_->primary->GetNextImage(1000);
+        auto img_s = impl_->secondary->GetNextImage(1000);
+        if (img_p->IsIncomplete() || img_s->IsIncomplete()) {
+            img_p->Release();
+            img_s->Release();
+            return false;
+        }
+        auto stamp = [&](Spinnaker::ImagePtr& img) {
+            if (impl_->cfg.chunk_mode_active && impl_->cfg.chunk_timestamp)
+                return static_cast<int64_t>(img->GetChunkData().GetTimestamp());
+            return static_cast<int64_t>(img->GetTimeStamp());
+        };
+        const int w = static_cast<int>(img_p->GetWidth());
+        const int h = static_cast<int>(img_p->GetHeight());
+        cv::Mat(h, w, CV_8UC1, img_p->GetData()).copyTo(pair.left);
+        cv::Mat(h, w, CV_8UC1, img_s->GetData()).copyTo(pair.right);
+        pair.left_id  = img_p->GetFrameID();
+        pair.right_id = img_s->GetFrameID();
+        pair.left_ts  = stamp(img_p);
+        pair.right_ts = stamp(img_s);
+        img_p->Release();
+        img_s->Release();
+        return true;
+    } catch (const Spinnaker::Exception& e) {
+        std::fprintf(stderr, "[camera] grab error: %s\n", e.what());
+        return false;
+    }
+}
+
+void StereoCamera::deep_buffers(int count)
+{
+    for (auto* cam : {&impl_->primary, &impl_->secondary}) {
+        auto& snm = (*cam)->GetTLStreamNodeMap();
+        set_enum(snm, "StreamBufferHandlingMode", "OldestFirst");
+        set_enum(snm, "StreamBufferCountMode", "Manual");
+        Spinnaker::GenApi::CIntegerPtr n = snm.GetNode("StreamBufferCountManual");
+        if (n && Spinnaker::GenApi::IsWritable(n)) {
+            n->SetValue(std::min<int64_t>(count, n->GetMax()));
+            if (n->GetValue() < count)
+                std::printf("[camera] only %lld stream buffers, raise usbfs_memory_mb to 1000\n",
+                            static_cast<long long>(n->GetValue()));
+        }
+    }
+}
+
+StereoCamera::Applied StereoCamera::applied(bool primary) const
+{
+    auto& cam = primary ? impl_->primary : impl_->secondary;
+    auto& nm  = cam->GetNodeMap();
+    auto get_float = [&](const char* name) {
+        Spinnaker::GenApi::CFloatPtr node = nm.GetNode(name);
+        return node && Spinnaker::GenApi::IsReadable(node) ? node->GetValue() : 0.0;
+    };
+    auto get_int = [&](const char* name) {
+        Spinnaker::GenApi::CIntegerPtr node = nm.GetNode(name);
+        return node && Spinnaker::GenApi::IsReadable(node) ? static_cast<int>(node->GetValue()) : 0;
+    };
+    Applied a;
+    a.serial = cam->DeviceSerialNumber.ToString().c_str();
+    Spinnaker::GenApi::CEnumerationPtr fmt = nm.GetNode("PixelFormat");
+    if (fmt && Spinnaker::GenApi::IsReadable(fmt)) a.pixel_format = fmt->GetCurrentEntry()->GetSymbolic().c_str();
+    a.width       = get_int("Width");
+    a.height      = get_int("Height");
+    a.exposure_us = get_float("ExposureTime");
+    a.gain_db     = get_float("Gain");
+    a.fps         = get_float("AcquisitionResultingFrameRate");
+    return a;
 }
 
 void StereoCamera::stop()
