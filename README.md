@@ -137,7 +137,8 @@ The Windows build has not been tested on real hardware yet. If Windows reports a
 | `replay_trajectory` | | Feeds a trajectory CSV through the tracker and reports prediction accuracy against ground truth. Use it to tune the EKF without hardware. |
 | `preview` | yes | Live view of both cameras, free running (no trigger). |
 | `dump_nodes` | yes | Prints every configurable Spinnaker node on the connected cameras. |
-| `capture_calibration` | yes | Saves synchronized stereo pairs for calibration. `s` saves a pair, `q` quits. |
+| `focus` | yes | Live view of every camera with a zoomed crop and a sharpness score, for setting the lens focus. Click to move the zoom box, `+`/`-` zoom, `r` resets the peak. |
+| `capture_calibration` | yes | Saves synchronized stereo pairs for calibration, with the board from `config/board.yaml` detected live in both views. Space starts a countdown loop (a shot every 3 s), `s` saves a pair now, `f` fullscreen, `q` quits. A pair is only saved when both cameras see at least 6 of the same corners. |
 | `depth_verify` | yes | Live HSV tuning and stereo depth check: masks, epipolar lines, triangulated XYZ. |
 | `realtime` | yes | Full pipeline: detect, triangulate, track, predict landing. Add `--headless` to skip the window. |
 | `capture_trajectories` | yes | Records trajectories to CSV in the folder given by `--output`. |

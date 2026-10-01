@@ -12,6 +12,7 @@ find_package(OpenCV 4 REQUIRED COMPONENTS
     imgproc
     calib3d
     highgui
+    objdetect
 )
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
@@ -96,6 +97,10 @@ if(WITH_SPINNAKER)
     add_executable(track_single src/track_single.cpp)
     target_include_directories(track_single PRIVATE ${SPINNAKER_INCLUDE})
     target_link_libraries(track_single PRIVATE baddy_core ${SPINNAKER_LIB})
+
+    add_executable(focus src/focus.cpp)
+    target_include_directories(focus PRIVATE ${SPINNAKER_INCLUDE})
+    target_link_libraries(focus PRIVATE baddy_core ${SPINNAKER_LIB})
 
     add_executable(dump_nodes src/dump_nodes.cpp)
     target_include_directories(dump_nodes PRIVATE ${SPINNAKER_INCLUDE})
