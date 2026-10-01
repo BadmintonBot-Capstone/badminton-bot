@@ -13,11 +13,11 @@ Detection is scored in every frame where the shuttle is visible, flying and stil
 
 | id | question | status | answer |
 |----|----------|--------|--------|
-| E00 | Tools: stereo recorder, labeller, scorer | in progress | |
+| E00 | Tools: stereo recorder, labeller, scorer | built | `record_stereo`, `analysis/label.py`, `analysis/score_frames.py`; recorder tested at 1000 pairs, none dropped |
 | E01 | Is the lab flicker 120 Hz or a multiple of it? | planned | |
 | E02 | How do noise and brightness change with gain, exposure and camera binning? | planned | |
 | E03 | How far off is a still shuttle's 3D position at 3 to 13 m? | planned | |
 | E04 | Which exposure, gain, frame rate and binning track flights best at 3 to 13 m? | planned | |
-| E05 | Which tracker variant scores best on the labelled E04 clips? | planned | |
+| E05 | Which tracker variant scores best on the labelled E04 clips? | pilot done | Pilot on the old rally: precise (1 bad report in 880 frames) but finds only 39% of flying frames, losing the slow late part of each flight |
 | E06 | Which way of centring the shuttle gives the most accurate 3D points? | planned | |
 | E07 | What has to be rerun under court light? | after booking | |

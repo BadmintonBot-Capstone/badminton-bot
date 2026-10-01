@@ -19,6 +19,8 @@ def main():
 
     clip = pathlib.Path(a.clip)
     fps = yaml.safe_load(open(clip / 'meta.yaml'))['fps']
+    if not (clip / a.labels).exists():
+        sys.exit(f'no labels at {clip / a.labels}, label the clip first: python label.py {clip}')
     lab = {int(r['frame']): r for r in csv.DictReader(open(clip / a.labels))}
     rows = list(csv.DictReader(open(clip / a.track if not pathlib.Path(a.track).exists() else a.track)))
     hits = {int(r['frame']): (float(r['x']), float(r['y'])) for r in rows if r['state'] == 'hit'}
