@@ -22,7 +22,7 @@ Labels in `label.py`: `f` flying, `s` visible but still (hand, racket, floor), `
 | script | what it does |
 |--------|--------------|
 | `rec.py` | shared loader: memory-mapped frames, 2x2 Bayer average to half resolution grey, debayer for viewing |
-| `flicker.py` | per-frame brightness, flicker %, dominant frequency and saturation for each folder given |
+| `flicker.py` | brightness swing and its strongest frequency for each still clip given, plus where each multiple of 120 Hz would show at the clip's fps (E01); needs scipy, so run it with `~/.venvs/cpsc330/bin/python` |
 | `sheet.py` | contact sheet: `sheet.py <clip> <step> <start> <stop>` |
 | `proto.py` | first tracker prototype, single track |
 | `proto2.py` | the prototype that got ported to C++ (`src/shuttle_tracker.hpp`) |

@@ -14,7 +14,7 @@ Detection is scored in every frame where the shuttle is visible, flying and stil
 | id | question | status | answer |
 |----|----------|--------|--------|
 | E00 | Tools: stereo recorder, labeller, scorer | built | `record_stereo`, `analysis/label.py`, `analysis/score_frames.py`; recorder tested at 1000 pairs, none dropped |
-| E01 | Is the lab flicker 120 Hz or a multiple of it? | planned | |
+| E01 | Is the lab flicker 120 Hz or a multiple of it? | done | 120 Hz: 2.4% brightness swing at 1 ms, 0.09% at 8.33 ms; only whole multiples of 8.33 ms cancel it |
 | E02 | How do noise and brightness change with gain, exposure and camera binning? | planned | |
 | E03 | How far off is a still shuttle's 3D position at 3 to 13 m? | planned | |
 | E04 | Which exposure, gain, frame rate and binning track flights best at 3 to 13 m? | planned | |
