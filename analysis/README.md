@@ -17,6 +17,20 @@ A typical loop for one clip:
 
 Labels in `label.py`: `f` flying, `s` visible but still (hand, racket, floor), `n` not visible, `u` unsure. A state key labels the frame and moves on, a click sets the position first, space plays forward applying the current state to unlabelled frames, `i` fills short gaps inside a flight by fitting a curve through the labelled frames around them.
 
+## Settings sweep, flight fit and 3D tracker (E04, E05)
+
+Run in this order on labelled stereo clips; each later script reads what the earlier ones saved. All but `cands.py` take seconds to a minute.
+
+| script | what it does |
+|--------|--------------|
+| `cands.py` | every motion blob in every frame for three background models (running average, last frame, both neighbouring frames) at eight thresholds, saved to `<clip>/sweep/<camera>.npz`. One read of the clip, about 8 minutes per 30 s clip; run 7 clips at a time, once per camera |
+| `contrast.py` | how far the flying shuttle's change stands out from the typical background change, per setting, range and image speed |
+| `sweep.py` | scores 7680 detector variants (model, threshold, blob size, yellowness, right camera check) with 5-fold cross validation by flight, tuned per setting; saves `sweep_<camera>.npz` next to the clips |
+| `flightfit.py` | triangulates every labelled flight and fits drag plus gravity: alpha and gravity's direction per range, each flight's start, 3D scatter per setting. `tools/fit_alpha.py` is the older fit, alpha only, gravity straight down y |
+| `track3d.py` | physics-gated 3D tracker run offline on the saved blobs of both cameras (EKF with the fitted drag and gravity, gates in metres), scored with the current tracker against the labels |
+| `track3d_sweep.py` | runs `track3d.py` over a grid of settings and picks one by cross validation for a given number of false reports per minute; saves `track3d_grid.npz` |
+| `figures_e04.py` | draws the E04 and E05 figures into `experiments/figures/E04/` from the saved results |
+
 ## Older tools (2026-09-27 and 09-30)
 
 | script | what it does |
