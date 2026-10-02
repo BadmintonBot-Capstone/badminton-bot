@@ -16,7 +16,7 @@ Detection is scored in every frame where the shuttle is visible, flying and stil
 | E00 | Tools: stereo recorder, labeller, scorer | built | `record_stereo`, `analysis/label.py`, `analysis/score_frames.py`; recorder tested at 1000 pairs, none dropped |
 | E01 | Is the lab flicker 120 Hz or a multiple of it? | done | 120 Hz: 2.4% brightness swing at 1 ms, 0.09% at 8.33 ms; only whole multiples of 8.33 ms cancel it |
 | E02 | How do noise and brightness change with gain, exposure and camera binning? | done (no binning) | Matched gains 12.3 dB at 4 ms, 18.3 dB at 2 ms; noise doubles per 6 dB but never trips the tracker, even at 24 dB |
-| E03 | How far off is a still shuttle's 3D position at 3 to 13 m? | planned | |
+| E03 | How far off is a still shuttle's 3D position at 3 to 13 m? | done (centre, 11 to 30 ft) | Within about 1 cm on average at every distance; camera noise moves one point's depth 1 mm at 11 ft to 13 mm at 30 ft per frame, about double with a hand-held stick. Found a camera turned 0.5 degrees in its mount, recalibrated |
 | E04 | Which exposure, gain, frame rate and binning track flights best at 3 to 13 m? | planned | |
 | E05 | Which tracker variant scores best on the labelled E04 clips? | pilot done | Pilot on the old rally: precise (1 bad report in 880 frames) but finds only 39% of flying frames, losing the slow late part of each flight |
 | E06 | Which way of centring the shuttle gives the most accurate 3D points? | planned | |
