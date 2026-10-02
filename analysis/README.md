@@ -22,6 +22,7 @@ Labels in `label.py`: `f` flying, `s` visible but still (hand, racket, floor), `
 | script | what it does |
 |--------|--------------|
 | `rec.py` | shared loader: memory-mapped frames, 2x2 Bayer average to half resolution grey, debayer for viewing |
+| `trail.py` | where yellow things moved over a stereo clip, both cameras side by side and coloured by time (`<clip>/<clip name>_trail.jpg`); the check after each E04 recording that the flights stayed in both views |
 | `separation.py` | 3D distance between the two shuttles on the E03 stick in every frame, rectifying and triangulating the way `src/core/stereo.cpp` does, with check sheets of used and dropped frames |
 | `noise.py` | brightness, noise, saturation and the tracker's false motion for each still clip, plus the gain at each exposure that matches a baseline clip's brightness (E02) |
 | `flicker.py` | brightness swing and its strongest frequency for each still clip given, plus where each multiple of 120 Hz would show at the clip's fps (E01); needs scipy, so run it with `~/.venvs/cpsc330/bin/python` |
