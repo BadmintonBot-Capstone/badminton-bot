@@ -141,6 +141,16 @@ def main():
         print(f'  interpolated {filled} frames')
 
     def on_mouse(event, x, y, flags, _):
+        if event == cv2.EVENT_MOUSEMOVE:
+            # the zoom follows the cursor over the full view and holds still while the cursor is
+            # in the zoom, so a click there lands where it was aimed; below the views it goes back
+            # to following the shuttle
+            s['cursor_in_view'] = x < VIEW_W and y < VIEW_H
+            if s['cursor_in_view']:
+                s['hover'] = (x * W / VIEW_W, y * H / VIEW_H)
+            elif y >= VIEW_H:
+                s['hover'] = None
+            return
         if event != cv2.EVENT_LBUTTONDOWN:
             return
         if x < VIEW_W and y < VIEW_H:
@@ -183,17 +193,26 @@ def main():
         if pos is not None:
             col = COLOUR[cur['state']] if cur else (255, 255, 255)
             cv2.circle(view, (int(pos[0] * sx), int(pos[1] * sy)), 14, col, 2)
-        canvas[:VIEW_H, :VIEW_W] = view
-
-        # zoom around the position, or the middle of the frame when there is none yet
-        cx, cy = pos if pos is not None else (W / 2, H / 2)
+        # zoom around the cursor, else the position, else the middle of the frame
+        if s.get('hover') is not None:
+            cx, cy = s['hover']
+        else:
+            cx, cy = pos if pos is not None else (W / 2, H / 2)
         c = s['crop']
         ox, oy = int(np.clip(cx - c / 2, 0, W - c)), int(np.clip(cy - c / 2, 0, H - c))
         s['zoom_origin'] = (ox, oy)
+        # outline the zoomed area on the full view
+        cv2.rectangle(view, (int(ox * sx), int(oy * sy)), (int((ox + c) * sx), int((oy + c) * sy)), (0, 0, 255), 1)
+        canvas[:VIEW_H, :VIEW_W] = view
         zoom = cv2.resize(img[oy:oy + c, ox:ox + c], (ZOOM, ZOOM), interpolation=cv2.INTER_NEAREST)
         if pos is not None:
             zx, zy = int((pos[0] - ox) * ZOOM / c), int((pos[1] - oy) * ZOOM / c)
             cv2.drawMarker(zoom, (zx, zy), (0, 0, 255), cv2.MARKER_CROSS, 30, 1)
+        if s.get('cursor_in_view') and s.get('hover') is not None:
+            # where a click on the full view would land, so it can be checked before clicking
+            hx, hy = int((s['hover'][0] - ox) * ZOOM / c), int((s['hover'][1] - oy) * ZOOM / c)
+            cv2.drawMarker(zoom, (hx, hy), (255, 255, 0), cv2.MARKER_TILTED_CROSS, 20, 1)
+            cv2.circle(zoom, (hx, hy), 12, (255, 255, 0), 1)
         canvas[:ZOOM, VIEW_W:] = zoom
 
         done = sum(l is not None for l in lab)
