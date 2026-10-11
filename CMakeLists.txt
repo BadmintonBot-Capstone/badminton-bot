@@ -5,6 +5,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# windows.h (pulled in by spinnaker) defines min/max macros that break std::max
+if(WIN32)
+    add_compile_definitions(NOMINMAX)
+endif()
+
 option(WITH_SPINNAKER "Build with Spinnaker SDK for camera support" OFF)
 
 find_package(OpenCV 4 REQUIRED COMPONENTS
@@ -44,6 +49,10 @@ target_link_libraries(baddy_core PUBLIC
 # replay_trajectory — works without cameras
 add_executable(replay_trajectory src/replay_trajectory.cpp)
 target_link_libraries(replay_trajectory PRIVATE baddy_core)
+
+# playback — plays recordings made by preview, works without cameras
+add_executable(playback src/playback.cpp)
+target_link_libraries(playback PRIVATE ${OpenCV_LIBS})
 
 if(WITH_SPINNAKER)
     # Spinnaker SDK does not ship a CMake find module.

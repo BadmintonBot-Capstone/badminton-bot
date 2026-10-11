@@ -39,6 +39,11 @@ size_t mem_available()
     return 0;
 }
 
+#ifdef _WIN32
+#define popen _popen
+#define pclose _pclose
+#endif
+
 std::string run(const std::string& cmd)
 {
     std::array<char, 256> line{};
