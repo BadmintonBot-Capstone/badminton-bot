@@ -29,7 +29,10 @@ Run in this order on labelled stereo clips; each later script reads what the ear
 | `flightfit.py` | triangulates every labelled flight and fits drag plus gravity: alpha and gravity's direction per range, each flight's start, 3D scatter per setting. `tools/fit_alpha.py` is the older fit, alpha only, gravity straight down y |
 | `track3d.py` | physics-gated 3D tracker run offline on the saved blobs of both cameras (EKF with the fitted drag and gravity, gates in metres), scored with the current tracker against the labels |
 | `track3d_sweep.py` | runs `track3d.py` over a grid of settings and picks one by cross validation for a given number of false reports per minute; saves `track3d_grid.npz` |
+| `track3d_crop.py` | E09: `track3d.py` searching only a crop around each confirmed track (`--crop`), every shape and size on every clip; saves `track3d_crop.npz` |
+| `track3d_confirm.py` | E10: confirm counts and dropping quiet tracks, scored by how early and how close each flight's end point is predicted; saves `track3d_confirm.npz` |
 | `figures_e04.py` | draws the E04 and E05 figures into `experiments/figures/E04/` from the saved results |
+| `figures_e08_e10.py` | draws the E08, E09 and E10 figures into `experiments/figures/` |
 
 ## Older tools (2026-09-27 and 09-30)
 

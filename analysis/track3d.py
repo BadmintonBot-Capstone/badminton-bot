@@ -102,6 +102,37 @@ class Ekf:
         return p, J @ s.R @ J.T
 
 
+def crops(tracks, ekf, shape, size):
+    # E09: one crop per confirmed track around its predicted left point and right point (left x minus
+    # disparity), in rectified full resolution px. each crop is (track id, left centre, right centre, left
+    # matrix, right matrix): a point p is inside when (p - c) M (p - c) <= 1
+    out = []
+    T = np.array([[1, 0, -1], [0, 1, 0]])
+    for tr in tracks:
+        if not tr['confirmed']: continue
+        zp, H = ekf.h(tr['x'])
+        cl, cr = zp[:2], np.array([zp[0] - zp[2], zp[1]])
+        if shape == 'rule':
+            # the whole frame stays searched; only the no new tracks rule acts
+            Ml = Mr = np.zeros((2, 2))
+        elif shape == 'ellipse':
+            S = H @ tr['P'] @ H.T + ekf.R
+            Ml = np.linalg.inv(S[:2, :2]) / size ** 2
+            Mr = np.linalg.inv(T @ S @ T.T) / size ** 2
+        else:
+            r = ekf.c['f'] * size / tr['x'][2] if shape == 'metres' else size
+            Ml = Mr = np.eye(2) / r ** 2
+        out.append((tr['id'], cl, cr, Ml, Mr))
+    return out
+
+
+def in_crop(p, c, M, box):
+    # rows of p inside one crop: the box shape tests each axis on its own, every other shape is an ellipse
+    d = p - c
+    if box: return (np.abs(d) <= 1 / np.sqrt(np.diag(M))).all(1)
+    return np.einsum('ij,jk,ik->i', d, M, d) <= 1
+
+
 def reportable(h, a):
     # a confirmed track's point is sent only while it moves like a flying shuttle: fast enough, and its mean
     # prediction error over the last frames within --nis-max. h is box, yellowness, area, depth, speed, error
@@ -111,6 +142,23 @@ def reportable(h, a):
 def run_clip(job):
     clip, a = job
     clip = pathlib.Path(clip)
+    reports, crop_log, _ = track_clip(clip, a)
+    out = clip / 'sweep' / f'track3d_{a.tag}.csv'
+    with open(out, 'w') as fh:
+        w = csv.writer(fh)
+        w.writerow(['frame', 'known_at', 'track', 'x0', 'y0', 'w', 'h', 'yellow', 'area', 'z', 'speed', 'nis'])
+        for r in sorted(reports, key=lambda r: r[:3]): w.writerow([r[0], r[1], r[2]] + [f'{v:.0f}' for v in r[3:7]] + [f'{v:.3f}' for v in r[7:]])
+    if getattr(a, 'crop', 'none') != 'none':
+        # every crop searched: its frame, track, left and right centres and matrices (upper triangle)
+        with open(clip / 'sweep' / f'track3d_{a.tag}_crops.csv', 'w') as fh:
+            w = csv.writer(fh)
+            w.writerow(['frame', 'track', 'lx', 'ly', 'rx', 'ry', 'ml00', 'ml01', 'ml11', 'mr00', 'mr01', 'mr11'])
+            for r in crop_log: w.writerow([r[0], r[1]] + [f'{v:.2f}' for v in r[2:6]] + [f'{v:.4g}' for v in r[6:]])
+    return str(out)
+
+
+def track_clip(clip, a):
+    # the tracker over one clip: reports, crops searched (E09) and the state each report was sent with (E10)
     cal = ff.load_cal()
     meta = yaml.safe_load(open(clip / 'meta.yaml'))
     fit = np.load(REC / 'flightfit.npy', allow_pickle=True).item()[meta['notes']['range_ft']]
@@ -122,14 +170,28 @@ def run_clip(job):
     gate = frame_pairs(L[L[:, 1] == a.gate_thresh], Rt[Rt[:, 1] == a.gate_thresh], cal, a.amin, a.amax, a.yel_gate,
                        a.smin, a.smax)
 
-    tracks, singles, reports, next_id = [], [], [], 0
+    crop = getattr(a, 'crop', 'none')
+    drop = getattr(a, 'drop_after', 0)  # E10: drop a confirmed track after this many quiet frames, 0 never
+    trace = getattr(a, 'trace', None)  # a list to fill with every track's filter steps, for the pipeline walkthrough
+    tracks, singles, reports, next_id, crop_log, states = [], [], [], 0, [], []
     for f in range(len(ts)):
         dt = ts[f] - ts[f - 1] if f else 0.01
         for tr in tracks:
             tr['x'], tr['P'] = ekf.predict(tr['x'], tr['P'], dt)
+        # E09: while a track is confirmed only its crops are searched, in both cameras, and no new track starts
+        cs = crops(tracks, ekf, crop, a.crop_size) if crop != 'none' else []
         # gate: each track takes its closest point in the gate, older confirmed tracks first, one track per blob
         g = gate.get(f)
+        if cs:
+            crop_log += [(f, c[0], *c[1], *c[2], *c[3][[0, 0, 1], [0, 1, 1]], *c[4][[0, 0, 1], [0, 1, 1]]) for c in cs]
+            if g is not None:
+                zr = np.column_stack([g['z'][:, 0] - g['z'][:, 2], g['z'][:, 1]])
+                keep = np.zeros(len(zr), bool)
+                for _, cl, cr, Ml, Mr in cs:
+                    keep |= in_crop(g['z'][:, :2], cl, Ml, crop == 'box') & in_crop(zr, cr, Mr, crop == 'box')
+                g = {k: v[keep] for k, v in g.items()} if keep.any() else None
         used, used_boxes = set(), []
+        if trace is not None: pre = {tr['id']: (tr['x'].copy(), tr['P'].copy()) for tr in tracks}
         cand = []
         if g is not None:
             for k, tr in enumerate(tracks):
@@ -141,7 +203,7 @@ def run_clip(job):
                 for j in np.flatnonzero(nis < a.chi2):
                     cand.append((not tr['confirmed'], tr['born'], nis[j], k, j, H, S))
         cand.sort(key=lambda q: q[:3])
-        took = set()
+        took, took_z = set(), {}
         for _, _, nis, k, j, H, S in cand:
             if k in took or g['blob'][j] in used: continue
             tr = tracks[k]
@@ -154,18 +216,30 @@ def run_clip(job):
             tr['hits'].append((f, np.concatenate([g['box'][j], g['feat'][j], [tr['x'][2], np.linalg.norm(tr['x'][3:]),
                                                                          np.mean(tr['nis'][-a.nis_window:])]])))
             tr['miss'] = 0
-            took.add(k); used.add(g['blob'][j]); used_boxes.append(g['box'][j])
+            took.add(k); used.add(g['blob'][j]); used_boxes.append(g['box'][j]); took_z[k] = g['z'][j]
             if not tr['confirmed'] and len(tr['hits']) >= a.confirm and np.linalg.norm(tr['x'][3:]) >= a.v_confirm:
                 tr['confirmed'] = True
-                for hf, hb in tr['hits']:
-                    if reportable(hb, a): reports.append((hf, f, tr['id'], *hb))
+                sent = [(hf, f, tr['id'], *hb) for hf, hb in tr['hits'] if reportable(hb, a)]
+                reports += sent
+                if sent: states.append((f, tr['id'], *tr['x']))
             elif tr['confirmed'] and reportable(tr['hits'][-1][1], a):
                 reports.append((f, f, tr['id'], *tr['hits'][-1][1]))
+                states.append((f, tr['id'], *tr['x']))
+        if trace is not None:
+            for k, tr in enumerate(tracks):
+                xp, Pp = pre[tr['id']]
+                zp, H = ekf.h(xp)
+                trace.append(dict(frame=f, track=tr['id'], x_pred=xp, zp=zp, S=H @ Pp @ H.T + ekf.R, z=took_z.get(k),
+                                  nis=tr['nis'][-1] if k in took else None, x=tr['x'].copy(), P=tr['P'].copy(),
+                                  confirmed=tr['confirmed'], hits=len(tr['hits'])))
         for k, tr in enumerate(tracks):
             if k not in took: tr['miss'] += 1
-        tracks = [tr for tr in tracks if tr['miss'] <= (a.miss_conf if tr['confirmed'] else a.miss_tent)]
+            # E10: frames in a row a confirmed track has gone without a point it could report
+            if tr['confirmed']: tr['quiet'] = 0 if k in took and reportable(tr['hits'][-1][1], a) else tr.get('quiet', 0) + 1
+        tracks = [tr for tr in tracks if tr['miss'] <= (a.miss_conf if tr['confirmed'] else a.miss_tent)
+                  and not (drop and tr['confirmed'] and tr['quiet'] > drop)]
         # new tracks from acquisition points left over, paired with last frame's leftovers
-        A = acq.get(f)
+        A = None if cs else acq.get(f)
         new_singles = []
         if A is not None:
             for j in range(len(A['z'])):
@@ -189,12 +263,7 @@ def run_clip(job):
             tracks.sort(key=lambda tr: (not tr['confirmed'], -len(tr['hits'])))
             tracks = tracks[:a.max_tracks]
 
-    out = clip / 'sweep' / f'track3d_{a.tag}.csv'
-    with open(out, 'w') as fh:
-        w = csv.writer(fh)
-        w.writerow(['frame', 'known_at', 'track', 'x0', 'y0', 'w', 'h', 'yellow', 'area', 'z', 'speed', 'nis'])
-        for r in sorted(reports, key=lambda r: r[:3]): w.writerow([r[0], r[1], r[2]] + [f'{v:.0f}' for v in r[3:7]] + [f'{v:.3f}' for v in r[7:]])
-    return str(out)
+    return reports, crop_log, states
 
 
 def score(clip, reports, info, margin=10, live_only=False):
@@ -267,6 +336,13 @@ def main():
     ap.add_argument('--miss-conf', type=int, default=4)
     ap.add_argument('--miss-tent', type=int, default=1)
     ap.add_argument('--max-tracks', type=int, default=200)
+    ap.add_argument('--crop', choices=['none', 'rule', 'circle', 'box', 'ellipse', 'metres'], default='none',
+                    help='E09: search only a crop around each confirmed track while one exists (rule: whole frame, '
+                         'no new tracks)')
+    ap.add_argument('--crop-size', type=float, default=0,
+                    help='circle radius or box half width in px, ellipse size in standard deviations, or radius in m')
+    ap.add_argument('--drop-after', type=int, default=0,
+                    help='E10: drop a confirmed track after this many frames in a row without a reportable point, 0 never')
     ap.add_argument('--tag', default='default')
     a = ap.parse_args()
     clips = [pathlib.Path(c) for c in a.clips]

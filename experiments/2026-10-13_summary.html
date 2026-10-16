@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vision experiments, 13 October 2026</title>
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --text: #1c1c1a;
+    --muted: #5d5c57;
+    --rule: #e1dfd8;
+    --accent: #2462c4;
+    --accent-soft: #e6eefb;
+    --code-bg: #eceae4;
+    --figure-bg: #fcfcfa;
+    --figure-border: #e2e0da;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141517;
+      --surface: #1c1e21;
+      --text: #e9e7e2;
+      --muted: #a4a29c;
+      --rule: #2d3034;
+      --accent: #86b2ff;
+      --accent-soft: #1f2a3d;
+      --code-bg: #2a2d31;
+      --figure-bg: #fcfcfa;
+      --figure-border: #3a3d42;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.6;
+  }
+  main {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 56px 24px 80px;
+  }
+  code {
+    font-family: ui-monospace, "JetBrains Mono", "DejaVu Sans Mono", Menlo, Consolas, monospace;
+    font-size: 0.88em;
+    background: var(--code-bg);
+    padding: 0.08em 0.35em;
+    border-radius: 4px;
+    overflow-wrap: anywhere;
+  }
+  a { color: var(--accent); }
+
+  /* header */
+  .eyebrow {
+    margin: 0 0 8px;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  h1 {
+    margin: 0 0 12px;
+    font-size: clamp(1.9rem, 4.5vw, 2.6rem);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    font-weight: 700;
+  }
+  .sub { margin: 0 0 32px; color: var(--muted); }
+
+  .short {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 22px 26px;
+    box-shadow: var(--shadow);
+  }
+  .short h2 {
+    margin: 0 0 12px;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .short ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: n;
+  }
+  .short li {
+    counter-increment: n;
+    display: flex;
+    gap: 14px;
+    align-items: baseline;
+    padding: 8px 0;
+    font-size: 1.12rem;
+    border-top: 1px solid var(--rule);
+  }
+  .short li:first-child { border-top: 0; }
+  .short li::before {
+    content: counter(n);
+    flex: none;
+    width: 1.6em;
+    height: 1.6em;
+    line-height: 1.6em;
+    text-align: center;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .short .where { margin-left: auto; color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+
+  /* sections */
+  section { margin-top: 80px; }
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 20px;
+  }
+  .tag {
+    font-family: ui-monospace, "JetBrains Mono", "DejaVu Sans Mono", Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 3px 9px;
+    border-radius: 6px;
+  }
+  h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    line-height: 1.25;
+    letter-spacing: -0.005em;
+  }
+  .label {
+    margin: 22px 0 6px;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  section p { margin: 0 0 12px; }
+  section ul { margin: 0; padding-left: 1.2em; }
+  section li { margin: 6px 0; }
+  section li::marker { color: var(--muted); }
+
+  .open {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+    padding: 9px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--surface);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    box-shadow: var(--shadow);
+  }
+  .open:hover { border-color: var(--accent); }
+  .open .what { font-weight: 400; color: var(--muted); }
+
+  /* figures stay on a light card in both themes, because the images have a light background */
+  figure { margin: 32px 0 0; }
+  .card {
+    display: block;
+    background: var(--figure-bg);
+    border: 1px solid var(--figure-border);
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: var(--shadow);
+    cursor: zoom-in;
+  }
+  .card img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+  figcaption {
+    margin-top: 10px;
+    padding: 0 4px;
+    font-size: 0.92rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  footer {
+    margin-top: 80px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+
+  /* lightbox */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 2vh 2vw;
+    background: rgba(10, 10, 12, 0.88);
+    cursor: zoom-out;
+    z-index: 10;
+  }
+  .lightbox.on { display: flex; }
+  .lightbox img {
+    max-width: 96vw;
+    max-height: 94vh;
+    background: #fcfcfa;
+    border-radius: 6px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  @media (max-width: 640px) {
+    body { font-size: 16px; }
+    main { padding: 32px 16px 56px; }
+    section { margin-top: 56px; }
+    .short { padding: 16px 18px; }
+    .short li { font-size: 1rem; }
+    .card { padding: 8px; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <p class="eyebrow">baddy-bot vision pipeline</p>
+  <h1>Vision experiments, 13 October 2026</h1>
+  <p class="sub">Three experiments, all on the 13 labelled E04 clips (85 flights at 11 and 35 ft).</p>
+
+  <div class="short">
+    <h2>The short version</h2>
+    <ol>
+      <li>The detector is fine.<span class="where">E08</span></li>
+      <li>The tracker's prediction is the limit.<span class="where">E10</span></li>
+      <li>The velocity estimate is the next thing to fix.<span class="where">E10</span></li>
+    </ol>
+  </div>
+</header>
+
+<section id="e08">
+  <div class="sec-head">
+    <span class="tag">E08</span>
+    <h2>jtandjung's MOG2 detector, on our clips</h2>
+  </div>
+
+  <p class="label">What I did</p>
+  <p>Ran his scripts from branch <code>origin/mog2_experiment</code>, unchanged, on the left camera of the 13 labelled E04 clips. MOG2 is OpenCV's background subtractor. It was scored against <code>ra</code>, <code>prev</code> and <code>tri</code> at the same budgets of false blobs per frame.</p>
+
+  <p class="label">What came out</p>
+  <ul>
+    <li>At 0.3 false blobs per frame, colour MOG2 ties: 87.2% of flying frames found, against 87.5% for <code>tri</code> and 89.5% for <code>prev</code>.</li>
+    <li>At 0.1 it falls far behind: 53.9% (42.3% at 35 ft) against 79.2% for <code>tri</code>.</li>
+    <li>The OpenCL path on your RTX 2070 took 5 ms per frame (upload and download included) against 13.5 ms on the CPU, with the masks matching to about a pixel.</li>
+    <li>Parked until a busy rally clip is labelled. His clip had players and rackets moving in view, and there MOG2 led <code>ra</code> 76.5% to 65.3%; ours had one thrower.</li>
+  </ul>
+
+  <figure>
+    <a class="card" href="figures/E08/detectors_by_budget.png" target="_blank">
+      <img src="figures/E08/detectors_by_budget.png" alt="Line chart of flying frames found against false blobs allowed per frame for tri, prev, ra and MOG2 colour" width="933" height="616">
+    </a>
+    <figcaption>Flying frames found on held-out flights, by how many false blobs per frame are allowed. MOG2 colour (yellow) meets the others at 0.3 and drops well below them at 0.1 and 0.03.</figcaption>
+  </figure>
+</section>
+
+<section id="e09">
+  <div class="sec-head">
+    <span class="tag">E09</span>
+    <h2>Crop around the predicted shuttle</h2>
+  </div>
+
+  <p class="label">What I did</p>
+  <p>Your idea: while a track is confirmed, search only a crop around where the tracker expects the shuttle, in both cameras, and go back to full frames when the track dies. I simulated it from the saved <code>tri</code> blob tables through the 3D tracker on all 85 flights, with circles, boxes, ellipses from the tracker's predicted error, and circles sized in metres.</p>
+
+  <p class="label">What came out</p>
+  <ul>
+    <li>About 29% fewer false reports (14.2 down to 10.1 per minute) for about 2 points fewer frames found (45.7% down to 43.6%).</li>
+    <li>Shape and size barely matter: the 40 and 80 px circles, the 40 px box, the ellipses and the 10 and 20 cm circles all land on 43.6 to 43.7% at 10.1 false reports per minute.</li>
+    <li>Almost no speed gain: about 10% fewer pixels on average and none on the slowest frame, because a track is confirmed in under 10% of these clips' frames.</li>
+    <li>Its main failure is a track that latches onto your raised hand. The crop follows the hand and the tracker goes blind to the real shuttle; in the worst flight the shuttle was picked up again 49 frames late.</li>
+  </ul>
+
+  <figure>
+    <a class="card" href="figures/E09/hand_latch_viewer.jpg" target="_blank">
+      <img src="figures/E09/hand_latch_viewer.jpg" alt="Crop viewer at frame 560 of clip ft35_c3, no crop on the left and a 40 px circle crop on the right" width="1368" height="830">
+    </a>
+    <figcaption>Crop viewer, clip ft35_c3, frame 560. Left, no crop: the shuttle's track 6 is reported on the shuttle. Right, a 40 px circle crop: the crop sits around track 5 on your raised free hand, so the shuttle is outside it and goes unseen.</figcaption>
+  </figure>
+
+  <figure>
+    <a class="card" href="figures/E09/crop_tradeoff.png" target="_blank">
+      <img src="figures/E09/crop_tradeoff.png" alt="Scatter of flying frames found live against false reports per minute for every crop variant" width="982" height="616">
+    </a>
+    <figcaption>Every crop variant on all 85 flights; top left is better. Eight of the small crops sit on the same point at 10.1 false reports per minute.</figcaption>
+  </figure>
+
+  <a class="open" href="file:///home/meej/Projects/baddy-bot/recordings/E04_settings_sweep/e09_viewer/index.html">Open the crop viewer <span class="what">two 35 ft flights, any two crops side by side</span></a>
+</section>
+
+<section id="e10">
+  <div class="sec-head">
+    <span class="tag">E10</span>
+    <h2>Confirm sooner, drop quiet tracks</h2>
+  </div>
+
+  <p class="label">What good means now</p>
+  <p>How early and how close the tracker predicts where each flight ends. Each flight is scored within 5, 10 and 20 cm of its fitted end point, at 0.05 to 0.5 s after the hit, with false reports held at 15 per minute or fewer.</p>
+
+  <p class="label">What I did</p>
+  <p>Ran a grid of 864 tracker settings on the 79 flights with a fitted end point: confirm a track after 2, 3, 4, 5, 6 or 8 points, and drop a confirmed track after 3, 6 or 12 frames without a reportable point, or never. Settings were picked on four folds of flights and scored on the fifth.</p>
+
+  <p class="label">What came out</p>
+  <ul>
+    <li>Confirming on fewer than 8 points makes it worse: 32 to 37% of flights within 20 cm at 0.3 s, against 37 to 43% for 8, and 27 false reports per minute at 2 or 3 points.</li>
+    <li>Dropping a confirmed track after 3 frames without a reportable point only trims false reports, from 14.5 to 11.1 per minute.</li>
+    <li>0.3 s after the hit, the median end point error is 25 cm at 35 ft. Most of it comes from the velocity, which is 0.43 m/s off; with the true velocity the error would be about 7 cm.</li>
+  </ul>
+
+  <figure>
+    <a class="card" href="figures/E10/within_20cm_over_time.png" target="_blank">
+      <img src="figures/E10/within_20cm_over_time.png" alt="Share of flights predicted within 20 cm against time after the hit, for confirm after 4, 6 and 8 points" width="933" height="616">
+    </a>
+    <figcaption>Share of held-out flights whose end point is predicted within 20 cm, by time after the hit. Confirming after 8 points stays on top.</figcaption>
+  </figure>
+
+  <figure>
+    <a class="card" href="figures/E10/error_sources.png" target="_blank">
+      <img src="figures/E10/error_sources.png" alt="Bar chart of median end point error at 0.3 s at 11 and 35 ft, as tracked, with the true velocity and with the true position" width="1189" height="524">
+    </a>
+    <figcaption>Median end point error 0.3 s after the hit. Swapping in the true velocity brings it down to 2.7 cm at 11 ft and 6.6 cm at 35 ft; swapping in the true position helps far less.</figcaption>
+  </figure>
+
+  <figure>
+    <a class="card" href="figures/E10/example_flight_error.png" target="_blank">
+      <img src="figures/E10/example_flight_error.png" alt="Predicted end point error against time after the hit for one 35 ft flight" width="1093" height="547">
+    </a>
+    <figcaption>One 35 ft flight (ft35_c1_e8333_g6). The predicted end point error shrinks as points arrive; the dashed lines mark 5, 10 and 20 cm.</figcaption>
+  </figure>
+
+  <a class="open" href="file:///home/meej/Projects/baddy-bot/recordings/E04_settings_sweep/pipeline_walkthrough/index.html">Open the pipeline walkthrough <span class="what">every stage from the raw picture to the prediction</span></a>
+</section>
+
+<section id="next">
+  <div class="sec-head">
+    <span class="tag">Next</span>
+    <h2>What comes next</h2>
+  </div>
+  <ul>
+    <li>A better velocity: retune the filter's model slack (<code>sig_a</code>, now 2 m/s²), or fit the track so far with the drag plus gravity physics, the way <code>flightfit.py</code> does offline.</li>
+    <li>A to-scale robot simulation with the year 1 spec (2.36 m/s² and 2.95 m/s, triangle profile), chasing the latest prediction from rings of start offsets, with the race ending at the last-seen point.</li>
+    <li>Harder data: 35 ft clips 6 to 8, and a two-player rally.</li>
+  </ul>
+</section>
+
+<footer>
+  Full tables and setups are in the reports in this folder:
+  <a href="E08_mog2_detector.md">E08_mog2_detector.md</a>,
+  <a href="E09_crop_around_prediction.md">E09_crop_around_prediction.md</a>,
+  <a href="E10_confirm_and_drop.md">E10_confirm_and_drop.md</a>.
+</footer>
+
+</main>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-label="Full size image"><img alt=""></div>
+
+<script>
+  (function () {
+    var box = document.getElementById('lightbox');
+    var big = box.querySelector('img');
+    document.querySelectorAll('a.card').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        big.src = a.getAttribute('href');
+        big.alt = a.querySelector('img').alt;
+        box.classList.add('on');
+      });
+    });
+    function close() { box.classList.remove('on'); }
+    box.addEventListener('click', close);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+  })();
+</script>
+</body>
+</html>
