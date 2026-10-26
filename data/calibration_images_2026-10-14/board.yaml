@@ -1,0 +1,9 @@
+# ChArUco calibration board, read by tools/generate_board.py and tools/stereo_calibrate.py.
+# Sized for one tabloid sheet (11 x 17 in). After printing, measure one square and one marker
+# (black edge to black edge) and replace the two lengths below with what you measured.
+
+squares_x: 8
+squares_y: 5            # keep this odd, OpenCV changed the layout of boards with an even row count
+dictionary: DICT_4X4_50
+square_mm: 47.88        # calipers on the mounted print matched the design (2026-09-30)
+marker_mm: 35.96        # calipers on the mounted print matched the design (2026-09-30)

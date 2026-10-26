@@ -2,10 +2,12 @@
 // hardware-triggered stereo pair.
 // Loads camera.yaml so the preview matches the real pipeline's image settings.
 //
-// usage: preview [config_dir] [recording_dir] [seconds] [--stereo] [--no-display] [--no-record]
+// usage: preview [config_dir] [recording_dir] [seconds] [--stereo] [--no-display] [--no-record] [--beep]
 //
 // --no-display: no window and no conversion for it, only the recording (needs seconds).
 // --no-record: grab (and pair) without writing anything, to tell disk limits from USB limits.
+// --beep: one beep when the first frame is recorded, two when recording stops, so one person
+//         can time an action to the recording.
 //
 // seconds: stop after this much footage, measured by the (primary) camera's own timestamps
 // (10 s at 100 fps is exactly 1000 frames). Omit or pass 0 to run until 'q'.
@@ -28,8 +30,12 @@
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include <thread>
 #include <vector>
 #include <string>
+#ifdef _WIN32
+#include <windows.h>   // Beep
+#endif
 
 namespace GenApi = Spinnaker::GenApi;
 
@@ -171,15 +177,29 @@ static cv::Mat to_bgr(Spinnaker::ImageProcessor& processor, const Spinnaker::Ima
     return cv::Mat(bgr->GetHeight(), bgr->GetWidth(), CV_8UC3, bgr->GetData()).clone();
 }
 
+// Beeps `times` times. Blocks until done, so call it on its own thread from the grab loop.
+static void beep(int times)
+{
+    for (int i = 0; i < times; ++i) {
+#ifdef _WIN32
+        Beep(1200, 300);
+        if (i + 1 < times) Sleep(100);
+#else
+        std::fputc('\a', stdout);
+#endif
+    }
+}
+
 static int run_preview(int argc, char* argv[])
 {
     // Positional arguments in order, plus the -- options anywhere.
     std::vector<std::string> pos;
-    bool stereo = false, display = true, record = true;
+    bool stereo = false, display = true, record = true, beeps = false;
     for (int i = 1; i < argc; ++i) {
         if (!std::strcmp(argv[i], "--stereo")) stereo = true;
         else if (!std::strcmp(argv[i], "--no-display")) display = false;
         else if (!std::strcmp(argv[i], "--no-record")) record = false;
+        else if (!std::strcmp(argv[i], "--beep")) beeps = true;
         else pos.push_back(argv[i]);
     }
 
@@ -358,6 +378,11 @@ static int run_preview(int argc, char* argv[])
                 first_id_s = img_s->GetFrameID();
                 have_first_ids = true;
             }
+            // The start beep plays on its own thread, so the loop keeps grabbing during it.
+            if (beeps && !have_last_id) {
+                std::printf("First frame recorded, beep.\n");
+                std::thread(beep, 1).detach();
+            }
             // Frames the camera made but this loop never got, from gaps in its frame counter.
             const uint64_t id = img->GetFrameID();
             if (have_last_id && id > last_id + 1) missing += id - last_id - 1;
@@ -397,6 +422,7 @@ static int run_preview(int argc, char* argv[])
     }
     if (errors > MAX_GRAB_ERRORS)
         std::fprintf(stderr, "Stopping after %d grab errors.\n", errors);
+    if (beeps) beep(2);   // recording has stopped, so this one can block
 
     const double elapsed_s =
         std::chrono::duration<double>(std::chrono::steady_clock::now() - t_start).count();
