@@ -54,9 +54,24 @@ void detect(const cv::aruco::CharucoDetector& det, const cv::Mat& bgr, std::vect
     for (auto& c : corners) c *= 2.0f;
 }
 
+int run(int argc, char** argv);
+
 } // namespace
 
+// an uncaught exception ends a Windows release build silently, so say what went wrong
 int main(int argc, char** argv)
+{
+    try {
+        return run(argc, argv);
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "[calibration] error: %s\n", e.what());
+        return 1;
+    }
+}
+
+namespace {
+
+int run(int argc, char** argv)
 {
     std::string config_dir = "config";
     std::string output_dir = "data/calibration_images";
@@ -203,3 +218,5 @@ int main(int argc, char** argv)
     std::printf("[calibration] done. %d pairs saved.\n", pair_count);
     return 0;
 }
+
+} // namespace
