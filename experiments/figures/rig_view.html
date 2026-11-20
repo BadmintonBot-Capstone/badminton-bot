@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="en-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stereo rig view</title>
+<script>
+  // show any script error on the page so a broken figure is never mistaken for a correct one.
+  window.addEventListener('error', function (e) {
+    var b = document.getElementById('err');
+    if (b) { b.hidden = false; b.textContent = 'Script error: ' + e.message + ' (line ' + e.lineno + ')'; }
+  });
+</script>
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --text: #1c1c1a;
+    --muted: #5d5c57;
+    --rule: #e1dfd8;
+    --accent: #2462c4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  header { padding: 18px 16px 6px; max-width: 1500px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 4px; }
+  p { margin: 0 0 6px; }
+  .muted { color: var(--muted); }
+  #err { background: #fde2e2; color: #8a1111; padding: 8px 12px; margin: 0 16px 8px; border-radius: 6px; font-weight: 600; }
+  .layout {
+    display: grid;
+    grid-template-columns: 310px minmax(0, 1fr);
+    gap: 16px;
+    padding: 0 16px 32px;
+    max-width: 1500px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .controls { position: sticky; top: 12px; align-self: start; max-height: calc(100vh - 24px); overflow: auto; }
+  .ctl { margin-bottom: 12px; }
+  .ctl label { font-weight: 600; display: block; }
+  .ctl-row { display: flex; align-items: center; gap: 6px; }
+  .ctl-row input[type=range] { flex: 1; min-width: 0; }
+  .ctl-row input[type=number] { width: 74px; font: inherit; padding: 1px 4px; }
+  .unit { width: 14px; color: var(--muted); }
+  .help { color: var(--muted); font-size: 12.5px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  button { font: inherit; font-size: 12.5px; padding: 3px 8px; border: 1px solid #b9b6ad; background: #faf9f6; border-radius: 5px; cursor: pointer; }
+  button:hover { background: #efede7; }
+  fieldset { border: 1px solid var(--rule); border-radius: 6px; margin: 0 0 12px; padding: 6px 10px; }
+  legend { font-weight: 600; padding: 0 4px; }
+  fieldset label { display: block; font-weight: normal; }
+  .ro { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 2px 14px; padding: 6px 0; border-top: 1px solid var(--rule); }
+  .ro:first-child { border-top: none; }
+  .ro-k { font-weight: 600; }
+  .ro-v { font-variant-numeric: tabular-nums; min-width: 0; overflow-x: auto; }
+  .ro-e { grid-column: 2; color: var(--muted); font-size: 12.5px; }
+  .yes { color: #15803d; font-weight: 600; }
+  .no { color: #b91c1c; font-weight: 600; }
+  table.mini { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  table.mini th, table.mini td { padding: 1px 10px 1px 0; text-align: left; white-space: nowrap; }
+  table.mini th { font-weight: 600; color: var(--muted); }
+  .fig { overflow-x: auto; margin-top: 8px; }
+  svg { display: block; max-width: 100%; height: auto; }
+  svg text { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif; }
+  .halo { paint-order: stroke; stroke: #ffffff; stroke-width: 3px; stroke-linejoin: round; }
+  .key { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+  .legend span { margin-right: 14px; white-space: nowrap; }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    .controls { position: static; max-height: none; }
+    .ro { grid-template-columns: minmax(0, 1fr); }
+    .ro-e { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Stereo rig view</h1>
+  <p class="muted">What the two rectified cameras see of a badminton court, for choosing the rig's height and tilt. Pinhole model, no lens distortion.</p>
+  <p class="muted" id="angles"></p>
+</header>
+<div id="err" hidden></div>
+<div class="layout">
+  <aside class="controls card" id="controls">
+    <h2>Rig and robot</h2>
+    <div id="sliders"></div>
+    <fieldset>
+      <legend>Drawn range</legend>
+      <label><input type="radio" name="range" value="near" checked> near half (to 11 m)</label>
+      <label><input type="radio" name="range" value="full"> full court (to 17 m)</label>
+    </fieldset>
+    <div class="btns"><button type="button" id="resetAll">Reset everything</button></div>
+  </aside>
+  <main>
+    <section class="card">
+      <h2>Side view</h2>
+      <p class="muted">Image rows of a rectified camera depend only on distance and height, so this view is exact at every sideways position, and both cameras share it. One metre is the same length on both axes, so the angles are true.</p>
+      <div id="sideReadouts"></div>
+      <div class="fig"><svg id="side" role="img" aria-label="Side view of the rig, its vertical field of view, the net and the robot"></svg></div>
+    </section>
+    <section class="card">
+      <h2>Top view</h2>
+      <p class="muted">The court from above. Each tinted region is the part of the chosen horizontal plane that one camera sees, cut to the distances that plane is inside the vertical view. Dashed lines continue each camera's side image edges across the plane.</p>
+      <fieldset>
+        <legend>Plane shaded in the top view</legend>
+        <label><input type="radio" name="plane" value="floor" checked> floor (0 m)</label>
+        <label><input type="radio" name="plane" value="led"> LED height (<span id="ledPlaneLabel">0.40</span> m)</label>
+      </fieldset>
+      <div class="legend muted">
+        <span><i class="key" style="background:rgba(37,99,235,0.22);border:1px solid #2563eb"></i>left camera</span>
+        <span><i class="key" style="background:rgba(217,119,6,0.22);border:1px solid #d97706"></i>right camera</span>
+        <span><i class="key" style="background:rgba(21,128,61,0.45);border:1px solid #15803d"></i>both cameras</span>
+        <span><i class="key" style="background:#db2777;border-radius:6px"></i>LED</span>
+      </div>
+      <div id="topReadouts"></div>
+      <div class="fig"><svg id="top" role="img" aria-label="Top view of the court with the area each camera sees"></svg></div>
+    </section>
+  </main>
+</div>
+
+<script>
+"use strict";
+
+// rectified intrinsics shared by both cameras, in pixels.
+const F = 2422.24, IW = 1920, IH = 1200, CX = 1059.89, CY = 592.90;
+// the right camera sits this far to the right of the left camera, in metres.
+const BASE = 0.504;
+// standard badminton court dimensions in metres.
+const HALF = 6.70, SINGLES_W = 5.18, DOUBLES_W = 6.10, SHORT_SVC = 1.98, LONG_SVC_DBL = 0.76;
+const NET_POST = 1.55, NET_CENTRE = 1.524;
+// robot footprint in metres, long side along the court.
+const ROBOT_W = 0.40, ROBOT_L = 0.60;
+// tilt measured on 2026-10-02, when the rig looked up 3.3 degrees.
+const MEASURED_TILT = -3.3;
+
+const DEG = Math.PI / 180;
+// half angles of the view, computed from the intrinsics.
+const A_BELOW = Math.atan((IH - CY) / F);
+const A_ABOVE = Math.atan(CY / F);
+const A_LEFT = Math.atan(CX / F);
+const A_RIGHT = Math.atan((IW - CX) / F);
+// sideways offset of the left and right image edges per metre of depth along the optical axis.
+const KL = -CX / F, KR = (IW - CX) / F;
+
+const COL = {
+  ink: '#1c1c1a', muted: '#5d5c57', grid: '#ebe9e3', frame: '#bdb9ae', ground: '#ebe6d8',
+  courtFill: '#f1efe7', court: '#77736a', left: '#2563eb', right: '#d97706', both: '#15803d',
+  fov: '#475569', fovFill: 'rgba(71,85,105,0.10)', robot: '#6d28d9', led: '#db2777', net: '#111827'
+};
+
+const CONTROLS = [
+  { id: 'h', label: 'Camera height', unit: 'm', min: 0.2, max: 2.5, step: 0.01, def: 1.0,
+    help: 'Height of the lenses above the floor.' },
+  { id: 'tilt', label: 'Tilt', unit: '°', min: -45, max: 30, step: 0.01, def: 0,
+    help: 'Positive tilts the rig down, negative tilts it up.' },
+  { id: 'd', label: 'Rig behind the baseline', unit: 'm', min: 0, max: 3, step: 0.01, def: 1.0,
+    help: 'How far behind the baseline the lenses sit.' },
+  { id: 's', label: 'Rig sideways offset', unit: 'm', min: -3, max: 3, step: 0.01, def: 0,
+    help: 'Midpoint of the two cameras, from the court centre line. Positive is the rig\'s right.' },
+  { id: 'rx', label: 'Robot distance', unit: 'm', min: 0, max: 10, step: 0.01, def: 3.0,
+    help: 'From the lenses to the robot\'s back face, along the court.' },
+  { id: 'ry', label: 'Robot sideways offset', unit: 'm', min: -4, max: 4, step: 0.01, def: 0,
+    help: 'Robot centre from the court centre line. Positive is the rig\'s right.' },
+  { id: 'led', label: 'LED height', unit: 'm', min: 0, max: 2.5, step: 0.01, def: 0.4,
+    help: 'LED centred on the robot\'s back face, the face toward the rig. Robot height is unknown.' }
+];
+
+const state = { range: 'near', plane: 'floor' };
+CONTROLS.forEach(c => { state[c.id] = c.def; });
+
+const $ = id => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+
+// formats a number with fixed decimals and never prints a negative zero.
+function fm(x, n = 2) {
+  const s = x.toFixed(n);
+  return /^-0\.?0*$/.test(s) ? s.slice(1) : s;
+}
+
+// geometry of the two rectified cameras and the court.
+
+// world frame: x along the court from the lenses, y sideways with positive to the rig's right, z up from the floor.
+function camYs(st) { return { L: st.s - BASE / 2, R: st.s + BASE / 2 }; }
+
+// elevation angles of the bottom and top image edges, in radians above horizontal.
+function edgeAngles(st) {
+  const t = st.tilt * DEG;
+  return { bot: -(t + A_BELOW), top: A_ABOVE - t };
+}
+
+// depth along the optical axis of a point at distance x on a horizontal plane at height z.
+function depthOnPlane(st, x, z) {
+  const t = st.tilt * DEG;
+  return x * Math.cos(t) + (st.h - z) * Math.sin(t);
+}
+
+// distance range along the court where a horizontal plane at height z lies inside the vertical view, or null if never.
+function planeInterval(st, z) {
+  const D = st.h - z;
+  const e = edgeAngles(st);
+  let near = 0, far = Infinity;
+  if (D > 1e-12) {
+    if (e.bot >= 0) return null;
+    near = D / Math.tan(-e.bot);
+    if (e.top < 0) far = D / Math.tan(-e.top);
+  } else if (D < -1e-12) {
+    if (e.top <= 0) return null;
+    near = -D / Math.tan(e.top);
+    if (e.bot > 0) far = -D / Math.tan(e.bot);
+  } else if (e.bot > 0 || e.top < 0) {
+    return null;
+  }
+  return near < far ? { near, far } : null;
+}
+
+// projects a world point into a camera at sideways position camY, returning pixel u, v or null when behind the lens.
+function project(st, p, camY) {
+  const t = st.tilt * DEG;
+  const dx = p.x, dy = p.y - camY, dz = p.z - st.h;
+  const zc = dx * Math.cos(t) - dz * Math.sin(t);
+  const yc = -dx * Math.sin(t) - dz * Math.cos(t);
+  if (zc <= 1e-9) return null;
+  return { u: F * dy / zc + CX, v: F * yc / zc + CY };
+}
+
+// sideways width both cameras see at distance x on the plane at height z.
+function overlapAt(st, x, z) {
+  const iv = planeInterval(st, z);
+  if (!iv || x < iv.near || x > iv.far) return { status: 'out' };
+  const w = IW * depthOnPlane(st, x, z) / F - BASE;
+  return w > 0 ? { status: 'ok', w } : { status: 'none' };
+}
+
+// regions each camera and both cameras see on the plane at height z, as polygons in world x, y.
+function planeRegions(st, z, xMax) {
+  const iv = planeInterval(st, z);
+  const t = st.tilt * DEG, D = st.h - z;
+  const cy = camYs(st);
+  const zc = x => depthOnPlane(st, x, z);
+  const out = { iv, apex: -D * Math.tan(t), zc, L: null, R: null, both: null };
+  if (!iv) return out;
+  const x1 = Math.min(iv.far, xMax);
+  const x0 = iv.near;
+  if (x0 >= x1) return out;
+  const quad = (a, b, lo, hi) => [[a, lo(a)], [b, lo(b)], [b, hi(b)], [a, hi(a)]];
+  out.L = quad(x0, x1, x => cy.L + KL * zc(x), x => cy.L + KR * zc(x));
+  out.R = quad(x0, x1, x => cy.R + KL * zc(x), x => cy.R + KR * zc(x));
+  const xMeet = (BASE * F / IW - D * Math.sin(t)) / Math.cos(t);
+  const a = Math.max(x0, xMeet);
+  if (a < x1) out.both = quad(a, x1, x => cy.R + KL * zc(x), x => cy.L + KR * zc(x));
+  return out;
+}
+
+// text readouts above each view.
+
+function placeVsBaseline(st, x) {
+  const dx = x - st.d;
+  return dx >= 0 ? fm(dx) + ' m past the baseline' : fm(-dx) + ' m short of the baseline';
+}
+
+function ledPoint(st) { return { x: st.rx, y: st.ry, z: st.led }; }
+
+function inImage(p) { return p && p.u >= 0 && p.u <= IW && p.v >= 0 && p.v <= IH; }
+
+function whyOut(p) {
+  if (!p) return 'level with or behind the lens';
+  const r = [];
+  if (p.u < 0) r.push('off the left edge');
+  if (p.u > IW) r.push('off the right edge');
+  if (p.v < 0) r.push('above the top edge');
+  if (p.v > IH) r.push('below the bottom edge');
+  return r.join(', ');
+}
+
+function row(k, v, e) {
+  return '<div class="ro"><div class="ro-k">' + k + '</div><div class="ro-v">' + v + '</div><div class="ro-e">' + e + '</div></div>';
+}
+
+function sideReadouts(st) {
+  const e = edgeAngles(st);
+  const t = st.tilt * DEG;
+  const xNet = st.d + HALF;
+  const below = fm(A_BELOW / DEG), above = fm(A_ABOVE / DEG);
+  let html = '';
+
+  let entry;
+  if (t + A_BELOW > 0) {
+    const xe = st.h / Math.tan(t + A_BELOW);
+    entry = '<b>' + fm(xe) + ' m</b> from the rig (' + placeVsBaseline(st, xe) + ')';
+  } else {
+    entry = '<b>never</b>';
+  }
+  let exit = '';
+  if (e.top < 0) {
+    const xo = st.h / Math.tan(-e.top);
+    exit = '; floor leaves view at <b>' + fm(xo) + ' m</b>';
+  }
+  html += row('Floor comes into view', entry + exit,
+    'Where the bottom image edge meets the floor, h / tan(tilt + ' + below + '°). Floor nearer than this is out of view.' +
+    (e.top < 0 ? ' The top edge points down, so the floor also leaves view.' : ''));
+
+  const topZ = x => st.h + x * Math.tan(e.top);
+  const cell = x => {
+    const z = topZ(x);
+    return z >= 0 ? fm(z) + ' m' : 'below the floor';
+  };
+  const tbl = '<table class="mini"><tr><th>at the net (' + fm(xNet) + ' m)</th><th>at 3 m</th><th>at 6 m</th></tr>' +
+    '<tr><td>' + cell(xNet) + '</td><td>' + cell(3) + '</td><td>' + cell(6) + '</td></tr></table>';
+  html += row('Top edge height', tbl,
+    'Height above the floor of the top image edge (' + above + '° above the optical axis) at each distance from the rig. The net top is ' +
+    fm(NET_POST) + ' m at the posts and ' + fm(NET_CENTRE, 3) + ' m at the centre.');
+
+  const p = project(st, ledPoint(st), camYs(st).L);
+  const zb = st.h + st.rx * Math.tan(e.bot), zt = topZ(st.rx);
+  let span;
+  if (st.rx <= 0) span = 'the LED is level with the lens';
+  else if (zt <= 0) span = 'at ' + fm(st.rx) + ' m the whole view is below the floor';
+  else span = 'at ' + fm(st.rx) + ' m the view covers heights ' + (zb <= 0 ? 'from the floor' : 'from ' + fm(zb) + ' m') + ' to ' + fm(zt) + ' m';
+  let ans;
+  if (p && p.v >= 0 && p.v <= IH) ans = '<span class="yes">yes</span>, image row ' + fm(p.v, 0) + ' of 1200; ' + span;
+  else ans = '<span class="no">no</span>, ' + (p ? (p.v < 0 ? 'above the top edge' : 'below the bottom edge') : 'level with or behind the lens') + '; ' + span;
+  html += row('LED in vertical view', ans,
+    'Compares the LED height (' + fm(st.led) + ' m) with the bottom and top image edges at the robot\'s distance.');
+  $('sideReadouts').innerHTML = html;
+}
+
+function topReadouts(st) {
+  let html = '';
+  const fmtCell = r => r.status === 'ok' ? fm(r.w) + ' m' : r.status === 'none' ? '0 m (views not yet overlapping)' : 'outside vertical view';
+  const dists = [2, 4, 6];
+  let tbl = '<table class="mini"><tr><th>plane</th>' + dists.map(x => '<th>at ' + x + ' m</th>').join('') + '</tr>';
+  tbl += '<tr><td>floor (0 m)</td>' + dists.map(x => '<td>' + fmtCell(overlapAt(st, x, 0)) + '</td>').join('') + '</tr>';
+  tbl += '<tr><td>LED height (' + fm(st.led) + ' m)</td>' + dists.map(x => '<td>' + fmtCell(overlapAt(st, x, st.led)) + '</td>').join('') + '</tr></table>';
+  html += row('Width both cameras see', tbl,
+    'Sideways width inside both images on that horizontal plane: (1920 / f) × depth along the optical axis, minus the ' + fm(BASE, 3) +
+    ' m baseline. Distances are from the rig.');
+
+  const cy = camYs(st);
+  const pL = project(st, ledPoint(st), cy.L), pR = project(st, ledPoint(st), cy.R);
+  const okL = inImage(pL), okR = inImage(pR);
+  const uv = p => p ? '(' + fm(p.u, 0) + ', ' + fm(p.v, 0) + ')' : 'none';
+  let ans = (okL && okR) ? '<span class="yes">yes</span>' : '<span class="no">no</span>';
+  const parts = [];
+  if (!okL) parts.push('left camera: ' + whyOut(pL));
+  if (!okR) parts.push('right camera: ' + whyOut(pR));
+  if (parts.length) ans += ', ' + parts.join('; ');
+  ans += '<br>left image (u, v) = ' + uv(pL) + ', right image (u, v) = ' + uv(pR);
+  html += row('LED seen by both', ans,
+    'The LED projected into each 1920 × 1200 image, using its true 3D position. Occlusion by the net or anything else is ignored.');
+  $('topReadouts').innerHTML = html;
+}
+
+// small helpers for building the svg figures.
+
+function el(tag, attrs, parent, text) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text !== undefined) n.textContent = text;
+  if (parent) parent.appendChild(n);
+  return n;
+}
+
+function txt(parent, x, y, s, o = {}) {
+  const a = { x, y, 'font-size': o.size || 11, fill: o.fill || COL.ink, 'text-anchor': o.anchor || 'start' };
+  if (o.halo !== false) a.class = 'halo';
+  if (o.weight) a['font-weight'] = o.weight;
+  if (o.rotate) a.transform = 'rotate(' + o.rotate + ' ' + x + ' ' + y + ')';
+  return el('text', a, parent, s);
+}
+
+function line(parent, x1, y1, x2, y2, stroke, w = 1, dash) {
+  const a = { x1, y1, x2, y2, stroke, 'stroke-width': w };
+  if (dash) a['stroke-dasharray'] = dash;
+  return el('line', a, parent);
+}
+
+function clipRect(defs, id, x, y, w, h) {
+  const c = el('clipPath', { id }, defs);
+  el('rect', { x, y, width: w, height: h }, c);
+}
+
+function viewWidth() {
+  const box = $('side').parentNode;
+  return Math.max(560, Math.min(1150, Math.floor(box.clientWidth)));
+}
+
+function xRange(st) { return st.range === 'full' ? [-1, 17] : [-1, 11]; }
+
+function frame(svg, W, H) {
+  svg.replaceChildren();
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+}
+
+// side view drawing.
+
+function renderSide(st) {
+  const svg = $('side');
+  const xr = xRange(st), W = viewWidth();
+  const ml = 52, mr = 14, mt = 12, mb = 40;
+  const k = (W - ml - mr) / (xr[1] - xr[0]);
+  const zr = [-0.3, 8];  // tall enough for a clear, which tops out near 7.4 m (E12)
+  const X = x => ml + (x - xr[0]) * k;
+  const Z = z => mt + (zr[1] - z) * k;
+  const H = Math.round(mt + mb + (zr[1] - zr[0]) * k);
+  frame(svg, W, H);
+  const x0 = X(xr[0]), x1 = X(xr[1]), y0 = Z(zr[1]), y1 = Z(zr[0]), yf = Z(0);
+  const defs = el('defs', {}, svg);
+  clipRect(defs, 'clipSide', x0, y0, x1 - x0, y1 - y0);
+  clipRect(defs, 'clipSideAbove', x0, y0, x1 - x0, yf - y0);
+  el('rect', { x: x0, y: y0, width: x1 - x0, height: y1 - y0, fill: '#ffffff' }, svg);
+
+  // grid and axis labels.
+  const lblStep = st.range === 'full' ? 2 : 1;
+  for (let x = Math.ceil(xr[0]); x <= xr[1]; x++) {
+    line(svg, X(x), y0, X(x), y1, x === 0 ? COL.frame : COL.grid);
+    if (x % lblStep === 0) txt(svg, X(x), y1 + 14, String(x), { anchor: 'middle', fill: COL.muted, halo: false });
+  }
+  for (let i = 0; i * 0.5 <= zr[1] + 1e-9; i++) {
+    const z = i * 0.5;
+    line(svg, x0, Z(z), x1, Z(z), COL.grid);
+    txt(svg, x0 - 6, Z(z) + 4, fm(z, 1), { anchor: 'end', fill: COL.muted, halo: false });
+  }
+  txt(svg, (x0 + x1) / 2, y1 + 32, 'distance from the rig along the court (m)', { anchor: 'middle', fill: COL.muted, halo: false });
+  txt(svg, 14, (y0 + yf) / 2, 'height (m)', { anchor: 'middle', fill: COL.muted, halo: false, rotate: -90 });
+
+  // ground below the floor line.
+  el('rect', { x: x0, y: yf, width: x1 - x0, height: y1 - yf, fill: COL.ground }, svg);
+  line(svg, x0, yf, x1, yf, '#8a8577', 1.5);
+
+  const gc = el('g', { 'clip-path': 'url(#clipSide)' }, svg);
+  const xb = st.d, xn = st.d + HALF, xfb = st.d + 2 * HALF;
+  // court surface from the baseline onward.
+  line(gc, X(xb), yf, X(xfb), yf, COL.court, 4);
+  line(gc, X(xb), yf - 6, X(xb), yf + 6, COL.court, 1.5);
+  txt(gc, X(xb) + 3, yf - 6, 'baseline', { fill: COL.court, size: 10.5 });
+  if (xfb <= xr[1]) {
+    line(gc, X(xfb), yf - 6, X(xfb), yf + 6, COL.court, 1.5);
+    txt(gc, X(xfb) - 3, yf - 6, 'far baseline', { fill: COL.court, size: 10.5, anchor: 'end' });
+  }
+
+  // vertical field of view wedge, cut at the floor.
+  const e = edgeAngles(st);
+  const ga = el('g', { 'clip-path': 'url(#clipSideAbove)' }, svg);
+  const far = xr[1] + 60;
+  const ray = ang => [X(far), Z(st.h + far * Math.tan(ang))];
+  const cam = [X(0), Z(st.h)];
+  const pb = ray(e.bot), pt = ray(e.top), pa = ray(-st.tilt * DEG);
+  el('polygon', { points: [cam, pb, pt].map(p => p.join(',')).join(' '), fill: COL.fovFill }, ga);
+  line(ga, cam[0], cam[1], pb[0], pb[1], COL.fov, 1.6);
+  line(ga, cam[0], cam[1], pt[0], pt[1], COL.fov, 1.6);
+  line(ga, cam[0], cam[1], pa[0], pa[1], COL.fov, 1, '6 4');
+
+  // labels for the three lines, placed where each one is inside the plot.
+  const labelAt = (ang, name, dy) => {
+    for (let x = xr[1] - 0.4; x > 0.6; x -= 0.1) {
+      const z = st.h + x * Math.tan(ang);
+      if (z > 0.15 && z < zr[1] - 0.15) {
+        txt(svg, X(x), Z(z) + dy, name, { anchor: 'end', fill: COL.fov, size: 10.5 });
+        return;
+      }
+    }
+  };
+  labelAt(e.top, 'top edge', -5);
+  labelAt(-st.tilt * DEG, 'optical axis', -5);
+  {
+    // the bottom edge label sits halfway between the camera and where that edge meets the floor.
+    const xe = (st.tilt * DEG + A_BELOW) > 0 ? st.h / Math.tan(st.tilt * DEG + A_BELOW) : xr[1];
+    const xm = Math.min(xe, xr[1]) * 0.3;
+    const zm = st.h + xm * Math.tan(e.bot);
+    if (zm > 0.1) txt(svg, X(xm), Z(zm) + 13, 'bottom edge', { anchor: 'start', fill: COL.fov, size: 10.5 });
+  }
+
+  // net at the end of the half court.
+  if (xn <= xr[1]) {
+    line(gc, X(xn), yf, X(xn), Z(NET_POST), COL.net, 2.5);
+    txt(gc, X(xn) + 5, Z(NET_POST) - 4, 'net ' + fm(NET_POST) + ' m at posts, ' + fm(NET_CENTRE, 3) + ' m at centre', { size: 10.5 });
+  }
+
+  // robot box drawn up to the led height, with a dashed top because its real height is unknown.
+  const rx = st.rx, rz = st.led;
+  el('rect', { x: X(rx), y: Z(rz), width: ROBOT_L * k, height: Math.max(0, yf - Z(rz)), fill: 'rgba(109,40,217,0.12)' }, gc);
+  line(gc, X(rx), yf, X(rx), Z(rz), COL.robot, 1.5);
+  line(gc, X(rx + ROBOT_L), yf, X(rx + ROBOT_L), Z(rz), COL.robot, 1.5);
+  line(gc, X(rx), Z(rz), X(rx + ROBOT_L), Z(rz), COL.robot, 1.5, '4 3');
+  txt(gc, X(rx + ROBOT_L / 2), Z(rz) - 10, 'robot (height unknown)', { anchor: 'middle', fill: COL.robot, size: 10.5 });
+  el('circle', { cx: X(rx), cy: Z(rz), r: 5, fill: COL.led, stroke: '#ffffff', 'stroke-width': 1.5 }, gc);
+  txt(gc, X(rx) - 7, Z(rz) + 4, 'LED', { anchor: 'end', fill: COL.led, size: 10.5, weight: 600 });
+
+  // floor entry and exit markers.
+  const t = st.tilt * DEG;
+  if (t + A_BELOW > 0) {
+    const xe = st.h / Math.tan(t + A_BELOW);
+    if (xe <= xr[1]) {
+      el('circle', { cx: X(xe), cy: yf, r: 4.5, fill: COL.fov }, gc);
+      txt(gc, X(xe), yf + 15, 'floor in view from ' + fm(xe) + ' m', { anchor: 'middle', fill: COL.ink, size: 10.5, weight: 600 });
+    }
+  }
+  if (e.top < 0) {
+    const xo = st.h / Math.tan(-e.top);
+    if (xo <= xr[1]) {
+      el('circle', { cx: X(xo), cy: yf, r: 4.5, fill: COL.fov }, gc);
+      txt(gc, X(xo), yf + 15, 'floor out of view past ' + fm(xo) + ' m', { anchor: 'middle', fill: COL.ink, size: 10.5, weight: 600 });
+    }
+  }
+
+  // top edge heights at the readout distances.
+  [3, 6, xn].forEach(x => {
+    const z = st.h + x * Math.tan(e.top);
+    if (x <= xr[1] && z >= 0 && z <= zr[1]) {
+      el('circle', { cx: X(x), cy: Z(z), r: 3, fill: COL.fov }, svg);
+      txt(svg, X(x) + 5, Z(z) + (e.top < 0 ? -6 : 13), fm(z) + ' m', { fill: COL.fov, size: 10.5 });
+    }
+  });
+
+  // cameras: both lenses project to the same point in this view.
+  el('circle', { cx: cam[0], cy: cam[1], r: 5, fill: COL.ink }, svg);
+  txt(svg, cam[0] - 8, cam[1] - 8, 'cameras', { size: 10.5, weight: 600, anchor: 'end' });
+
+  el('rect', { x: x0, y: y0, width: x1 - x0, height: y1 - y0, fill: 'none', stroke: COL.frame }, svg);
+}
+
+// top view drawing.
+
+function renderTop(st) {
+  const svg = $('top');
+  const xr = xRange(st), W = viewWidth();
+  const ml = 52, mr = 14, mt = 22, mb = 40;
+  const k = (W - ml - mr) / (xr[1] - xr[0]);
+  const yr = [-3.6, 3.6];
+  const X = x => ml + (x - xr[0]) * k;
+  const Y = y => mt + (y - yr[0]) * k;
+  const H = Math.round(mt + mb + (yr[1] - yr[0]) * k);
+  frame(svg, W, H);
+  const x0 = X(xr[0]), x1 = X(xr[1]), y0 = Y(yr[0]), y1 = Y(yr[1]);
+  const defs = el('defs', {}, svg);
+  clipRect(defs, 'clipTop', x0, y0, x1 - x0, y1 - y0);
+  el('rect', { x: x0, y: y0, width: x1 - x0, height: y1 - y0, fill: '#ffffff' }, svg);
+
+  // grid and axis labels.
+  const lblStep = st.range === 'full' ? 2 : 1;
+  for (let x = Math.ceil(xr[0]); x <= xr[1]; x++) {
+    line(svg, X(x), y0, X(x), y1, x === 0 ? COL.frame : COL.grid);
+    if (x % lblStep === 0) txt(svg, X(x), y1 + 14, String(x), { anchor: 'middle', fill: COL.muted, halo: false });
+  }
+  for (let y = Math.ceil(yr[0]); y <= yr[1]; y++) {
+    line(svg, x0, Y(y), x1, Y(y), COL.grid);
+    txt(svg, x0 - 6, Y(y) + 4, (y > 0 ? '+' : '') + y, { anchor: 'end', fill: COL.muted, halo: false });
+  }
+  txt(svg, (x0 + x1) / 2, y1 + 32, 'distance from the rig along the court (m)', { anchor: 'middle', fill: COL.muted, halo: false });
+  txt(svg, 14, (y0 + y1) / 2, 'sideways from the court centre line (m)', { anchor: 'middle', fill: COL.muted, halo: false, rotate: -90 });
+  txt(svg, x0, y0 - 7, 'rig\'s left', { fill: COL.muted, halo: false });
+  txt(svg, x0 + 70, y1 + 32, 'rig\'s right', { fill: COL.muted, halo: false, anchor: 'end' });
+
+  const g = el('g', { 'clip-path': 'url(#clipTop)' }, svg);
+  const xb = st.d, xn = st.d + HALF, xfb = st.d + 2 * HALF;
+  const yd = DOUBLES_W / 2, ys = SINGLES_W / 2;
+  el('rect', { x: X(xb), y: Y(-yd), width: (xfb - xb) * k, height: DOUBLES_W * k, fill: COL.courtFill }, g);
+
+  // visible regions on the chosen plane.
+  const zPlane = st.plane === 'led' ? st.led : 0;
+  const reg = planeRegions(st, zPlane, xr[1] + 1);
+  const cy = camYs(st);
+  const poly = (pts, fill, stroke, sw) => el('polygon', {
+    points: pts.map(p => X(p[0]) + ',' + Y(p[1])).join(' '), fill, stroke: stroke || 'none', 'stroke-width': sw || 1
+  }, g);
+  if (reg.L) poly(reg.L, 'rgba(37,99,235,0.13)', COL.left, 1.2);
+  if (reg.R) poly(reg.R, 'rgba(217,119,6,0.13)', COL.right, 1.2);
+  if (reg.both) poly(reg.both, 'rgba(21,128,61,0.30)', COL.both, 1.6);
+
+  // dashed side edges of each image on the plane, starting where they meet, which is the plane point level with the lens plane.
+  const xe = xr[1] + 1;
+  [['L', COL.left], ['R', COL.right]].forEach(([c, col]) => {
+    const yc = cy[c];
+    if (reg.zc(xe) > 0) {
+      line(g, X(reg.apex), Y(yc), X(xe), Y(yc + KL * reg.zc(xe)), col, 1, '5 4');
+      line(g, X(reg.apex), Y(yc), X(xe), Y(yc + KR * reg.zc(xe)), col, 1, '5 4');
+    }
+  });
+
+  // court lines drawn over the shading so they stay visible.
+  const cl = (xa, ya, xb2, yb2, w) => line(g, X(xa), Y(ya), X(xb2), Y(yb2), COL.court, w || 1.2);
+  cl(xb, -yd, xfb, -yd); cl(xb, yd, xfb, yd);
+  cl(xb, -ys, xfb, -ys); cl(xb, ys, xfb, ys);
+  cl(xb, -yd, xb, yd); cl(xfb, -yd, xfb, yd);
+  cl(xb + LONG_SVC_DBL, -yd, xb + LONG_SVC_DBL, yd);
+  cl(xfb - LONG_SVC_DBL, -yd, xfb - LONG_SVC_DBL, yd);
+  cl(xn - SHORT_SVC, -yd, xn - SHORT_SVC, yd);
+  cl(xn + SHORT_SVC, -yd, xn + SHORT_SVC, yd);
+  cl(xb, 0, xn - SHORT_SVC, 0);
+  cl(xn + SHORT_SVC, 0, xfb, 0);
+  line(g, X(xn), Y(-yd), X(xn), Y(yd), COL.net, 3);
+
+  // court line labels above the court, in two rows so neighbours do not collide.
+  const rowA = Y(-yd) - 18, rowB = Y(-yd) - 5;
+  const lab = (x, yy, s) => { if (x >= xr[0] && x <= xr[1]) txt(g, X(x) + 3, yy, s, { fill: COL.court, size: 10.5 }); };
+  lab(xb, rowA, 'baseline');
+  lab(xb + LONG_SVC_DBL, rowB, 'doubles long service line');
+  lab(xn - SHORT_SVC, rowA, 'short service line');
+  lab(xn, rowB, 'net');
+  if (xn - 0.1 <= xr[1]) {
+    txt(g, X(Math.min(xn, xr[1])) - 6, Y(yd) + 13, 'doubles sideline', { fill: COL.court, size: 10.5, anchor: 'end' });
+    txt(g, X(Math.min(xn, xr[1])) - 6, Y(ys) - 4, 'singles sideline', { fill: COL.court, size: 10.5, anchor: 'end' });
+  }
+
+  // width both cameras see at the readout distances, on the chosen plane.
+  [2, 4, 6].forEach(x => {
+    const r = overlapAt(st, x, zPlane);
+    if (r.status !== 'ok' || x > xr[1]) return;
+    const zc = depthOnPlane(st, x, zPlane);
+    const ya = cy.R + KL * zc, yb = cy.L + KR * zc;
+    line(g, X(x), Y(ya), X(x), Y(yb), COL.both, 3);
+    txt(g, X(x) + 4, Y(ya) + 12, fm(r.w) + ' m', { fill: COL.both, size: 10.5, weight: 600 });
+  });
+
+  // robot footprint and led.
+  el('rect', { x: X(st.rx), y: Y(st.ry - ROBOT_W / 2), width: ROBOT_L * k, height: ROBOT_W * k,
+    fill: 'rgba(109,40,217,0.15)', stroke: COL.robot, 'stroke-width': 1.5 }, g);
+  el('circle', { cx: X(st.rx), cy: Y(st.ry), r: 5, fill: COL.led, stroke: '#ffffff', 'stroke-width': 1.5 }, g);
+  txt(g, X(st.rx + ROBOT_L) + 4, Y(st.ry) + 4, 'robot', { fill: COL.robot, size: 10.5 });
+
+  // the two cameras on the rig bar.
+  line(g, X(0), Y(cy.L), X(0), Y(cy.R), COL.ink, 3);
+  el('circle', { cx: X(0), cy: Y(cy.L), r: 4.5, fill: COL.left }, g);
+  el('circle', { cx: X(0), cy: Y(cy.R), r: 4.5, fill: COL.right }, g);
+  txt(g, X(0) - 7, Y(cy.L) + 4, 'L', { anchor: 'end', fill: COL.left, weight: 700 });
+  txt(g, X(0) - 7, Y(cy.R) + 4, 'R', { anchor: 'end', fill: COL.right, weight: 700 });
+
+  // note when the chosen plane is never in vertical view.
+  if (!reg.iv) txt(svg, (x0 + x1) / 2, (y0 + y1) / 2, 'this plane is outside the vertical view everywhere', { anchor: 'middle', size: 13, weight: 600 });
+
+  el('rect', { x: x0, y: y0, width: x1 - x0, height: y1 - y0, fill: 'none', stroke: COL.frame }, svg);
+}
+
+// sliders, buttons and the address hash.
+
+const inputs = {};
+
+function buildControls() {
+  const box = $('sliders');
+  CONTROLS.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'ctl';
+    d.innerHTML = '<label for="r_' + c.id + '">' + c.label + '</label>' +
+      '<div class="ctl-row"><input type="range" id="r_' + c.id + '" min="' + c.min + '" max="' + c.max + '" step="' + c.step + '">' +
+      '<input type="number" id="n_' + c.id + '" min="' + c.min + '" max="' + c.max + '" step="' + c.step + '">' +
+      '<span class="unit">' + c.unit + '</span></div><div class="help">' + c.help + '</div>';
+    box.appendChild(d);
+    if (c.id === 'tilt') {
+      const b = document.createElement('div');
+      b.className = 'btns';
+      b.innerHTML = '<button type="button" id="tiltMeasured">Measured 2026-10-02: ' + MEASURED_TILT + '° (looked up)</button>' +
+        '<button type="button" id="tiltZero">Level: 0°</button>';
+      d.appendChild(b);
+    }
+    const r = d.querySelector('input[type=range]'), n = d.querySelector('input[type=number]');
+    inputs[c.id] = { r, n, c };
+    r.addEventListener('input', () => setValue(c.id, parseFloat(r.value)));
+    n.addEventListener('change', () => setValue(c.id, parseFloat(n.value)));
+  });
+  $('tiltMeasured').addEventListener('click', () => setValue('tilt', MEASURED_TILT));
+  $('tiltZero').addEventListener('click', () => setValue('tilt', 0));
+  $('resetAll').addEventListener('click', () => {
+    CONTROLS.forEach(c => { state[c.id] = c.def; });
+    state.range = 'near'; state.plane = 'floor';
+    syncInputs(); render();
+  });
+  document.querySelectorAll('input[name=range]').forEach(r => r.addEventListener('change', () => { state.range = r.value; render(); }));
+  document.querySelectorAll('input[name=plane]').forEach(r => r.addEventListener('change', () => { state.plane = r.value; render(); }));
+}
+
+function setValue(id, v) {
+  const c = inputs[id].c;
+  if (!isFinite(v)) { syncInputs(); return; }
+  state[id] = Math.min(c.max, Math.max(c.min, v));
+  syncInputs();
+  render();
+}
+
+function syncInputs() {
+  for (const id in inputs) {
+    inputs[id].r.value = state[id];
+    inputs[id].n.value = state[id];
+  }
+  document.querySelectorAll('input[name=range]').forEach(r => { r.checked = r.value === state.range; });
+  document.querySelectorAll('input[name=plane]').forEach(r => { r.checked = r.value === state.plane; });
+}
+
+// reads settings from the address hash, for example #h=1.2&tilt=5.
+function readHash() {
+  const q = new URLSearchParams(location.hash.slice(1));
+  CONTROLS.forEach(c => {
+    if (q.has(c.id)) {
+      const v = parseFloat(q.get(c.id));
+      if (isFinite(v)) state[c.id] = Math.min(c.max, Math.max(c.min, v));
+    }
+  });
+  if (q.get('range') === 'full' || q.get('range') === 'near') state.range = q.get('range');
+  if (q.get('plane') === 'led' || q.get('plane') === 'floor') state.plane = q.get('plane');
+}
+
+// writes settings to the address hash so a configuration can be bookmarked.
+function writeHash() {
+  const q = new URLSearchParams();
+  CONTROLS.forEach(c => q.set(c.id, String(state[c.id])));
+  q.set('range', state.range);
+  q.set('plane', state.plane);
+  try { history.replaceState(null, '', '#' + q.toString()); } catch (e) { /* some contexts refuse url changes, which is harmless. */ }
+}
+
+function render() {
+  $('ledPlaneLabel').textContent = fm(state.led);
+  sideReadouts(state);
+  topReadouts(state);
+  renderSide(state);
+  renderTop(state);
+  writeHash();
+}
+
+$('angles').textContent = 'From f = ' + F + ' px, cx = ' + CX + ', cy = ' + fm(CY) + ' on a ' + IW + ' × ' + IH + ' image, the view reaches ' +
+  fm(A_BELOW / DEG) + '° below the optical axis, ' + fm(A_ABOVE / DEG) + '° above, ' + fm(A_LEFT / DEG) + '° left and ' +
+  fm(A_RIGHT / DEG) + '° right (left camera). Baseline ' + fm(BASE, 3) + ' m, right camera to the right of the left one.';
+
+buildControls();
+readHash();
+syncInputs();
+render();
+// redraw when the figure column changes width, which includes a page scrollbar appearing after the first draw.
+let lastWidth = viewWidth(), resizeTimer = null;
+new ResizeObserver(() => {
+  const w = viewWidth();
+  if (w === lastWidth) return;
+  lastWidth = w;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(render, 60);
+}).observe($('side').parentNode);
+</script>
+</body>
+</html>
